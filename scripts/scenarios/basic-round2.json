@@ -1,0 +1,44 @@
+{
+  "round": 2,
+  "phase": "PLAYER_TURN",
+  "currentPlayerIndex": 0,
+  "seed": 42,
+  "players": [
+    {
+      "name": "Alice",
+      "food": ["SEED", "SEED", "INVERTEBRATE", "FISH"],
+      "hand": ["NORTHERN_CARDINAL", "BLUE_JAY", "BARN_OWL"],
+      "bonusCards": ["BIRD_FEEDER"],
+      "actionCubes": 7,
+      "board": {
+        "FOREST": [
+          { "name": "EASTERN_BLUEBIRD", "eggs": 2 }
+        ],
+        "GRASSLAND": [
+          { "name": "KILLDEER", "eggs": 1, "cachedFood": 0, "tuckedCards": 0 }
+        ],
+        "WETLAND": []
+      }
+    },
+    {
+      "name": "Bob",
+      "food": ["FRUIT", "RODENT", "INVERTEBRATE"],
+      "hand": ["AMERICAN_ROBIN", "HOUSE_FINCH"],
+      "bonusCards": ["ANATOMIST"],
+      "actionCubes": 7,
+      "board": {
+        "FOREST": [
+          { "name": "DOWNY_WOODPECKER", "eggs": 0, "cachedFood": 1 }
+        ],
+        "GRASSLAND": [],
+        "WETLAND": [
+          { "name": "MALLARD", "eggs": 3 }
+        ]
+      }
+    }
+  ],
+  "birdfeeder": {
+    "dice": ["SEED", "FISH", "INVERTEBRATE", "FRUIT", "RODENT"]
+  },
+  "birdTray": ["OSPREY", "CEDAR_WAXWING", "TREE_SWALLOW"]
+}

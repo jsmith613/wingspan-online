@@ -783,6 +783,29 @@ export class Game {
     game.birdTray = [...data.birdTray];
     game.bonusDeck = [...data.bonusDeck];
     game.rebuildPowerListeners();
+    game.restoreInputState();
     return game;
+  }
+
+  /**
+   * Reconstruct `waitingFor` from the current game phase and player state.
+   * Called after deserialize() so that games loaded from DB have correct input state.
+   */
+  public restoreInputState(): void {
+    if (this.phase === Phase.PLAYER_TURN) {
+      const player = this.currentPlayer;
+      const availableActions: ActionType[] = [
+        ActionType.GAIN_FOOD,
+        ActionType.LAY_EGGS,
+        ActionType.DRAW_CARDS,
+      ];
+      if (player.hand.length > 0) {
+        availableActions.unshift(ActionType.PLAY_BIRD);
+      }
+      this.waitingFor = { type: InputType.SELECT_ACTION, availableActions };
+    } else if (this.phase === Phase.SETUP) {
+      this.waitingFor = this.getSetupInput(this.players[this.currentPlayerIndex]);
+    }
+    // GAME_END / other phases: waitingFor stays null
   }
 }
