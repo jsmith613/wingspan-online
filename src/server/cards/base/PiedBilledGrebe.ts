@@ -1,0 +1,21 @@
+import { BirdCard } from '../BirdCard';
+import { BirdCardName } from '../../../common/cards/BirdCardName';
+import { FoodType } from '../../../common/game/FoodType';
+import { NestType } from '../../../common/game/NestType';
+import { HabitatType } from '../../../common/game/HabitatType';
+import { PowerType } from '../../../common/game/PowerType';
+
+export class PiedBilledGrebe extends BirdCard {
+  readonly name = BirdCardName.PIED_BILLED_GREBE;
+  readonly commonName = 'Pied-Billed Grebe';
+  readonly scientificName = 'Podilymbus podiceps';
+  readonly habitats = [HabitatType.WETLAND];
+  readonly foodCost = [FoodType.INVERTEBRATE, FoodType.FISH];
+  readonly nestType = NestType.PLATFORM;
+  readonly eggCapacity = 4;
+  readonly wingspan = 41;
+  readonly points = 0;
+  readonly powerType = PowerType.BROWN;
+  readonly powerText = 'Draw 2 card. If you do, discard 1 card from your hand at the end of your turn.';
+
+}

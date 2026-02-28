@@ -95,7 +95,7 @@ export abstract class BirdCard implements BirdCardProperties {
    * White power: one-time effect when the bird is played.
    * Override in white-power bird cards.
    */
-  onPlay(_player: Player, _game: Game): void {
+  onPlay(_player: Player, _game: Game, _playedHabitat?: HabitatType): void {
     // no-op
   }
 

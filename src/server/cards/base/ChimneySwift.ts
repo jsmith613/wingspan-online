@@ -6,27 +6,22 @@ import { HabitatType } from '../../../common/game/HabitatType';
 import { PowerType } from '../../../common/game/PowerType';
 import type { Player } from '../../Player';
 import type { Game } from '../../Game';
-import { DrawCards } from '../../deferredActions/DrawCards';
 
-/**
- * Chimney Swift - Brown power: Draw 1 card.
- * Habitats: Grassland. Nest: Cavity. Eggs: 2. Wingspan: 31cm. Points: 1.
- * Food: Invertebrate.
- */
 export class ChimneySwift extends BirdCard {
   readonly name = BirdCardName.CHIMNEY_SWIFT;
   readonly commonName = 'Chimney Swift';
   readonly scientificName = 'Chaetura pelagica';
-  readonly habitats = [HabitatType.GRASSLAND];
-  readonly foodCost = [FoodType.INVERTEBRATE];
-  readonly nestType = NestType.CAVITY;
+  readonly habitats = [HabitatType.FOREST, HabitatType.GRASSLAND, HabitatType.WETLAND];
+  readonly foodCost = [FoodType.INVERTEBRATE, FoodType.INVERTEBRATE];
+  readonly nestType = NestType.WILD;
   readonly eggCapacity = 2;
-  readonly wingspan = 31;
-  readonly points = 1;
+  readonly wingspan = 36;
+  readonly points = 3;
   readonly powerType = PowerType.BROWN;
-  readonly powerText = 'Draw 1 card.';
+  readonly powerText = 'If this bird is to the right of all other birds in its habitat, move it to another habitat.';
 
-  onActivate(player: Player, game: Game): void {
-    game.deferredActions.push(new DrawCards(player, 1));
+  // TODO: Complex power - requires additional UI interaction
+  onActivate(_player: Player, _game: Game): void {
+    // If this bird is to the right of all other birds in its habitat, move it to another habitat.
   }
 }

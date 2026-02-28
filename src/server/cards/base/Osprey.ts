@@ -5,26 +5,24 @@ import { NestType } from '../../../common/game/NestType';
 import { HabitatType } from '../../../common/game/HabitatType';
 import { PowerType } from '../../../common/game/PowerType';
 import type { Player } from '../../Player';
+import type { Game } from '../../Game';
 
-/**
- * Osprey - Game-end power: 2 points per fish in your supply.
- * Habitats: Wetland. Nest: Platform. Eggs: 2. Wingspan: 163cm. Points: 5.
- * Food: Fish, Fish, Fish.
- */
 export class Osprey extends BirdCard {
   readonly name = BirdCardName.OSPREY;
   readonly commonName = 'Osprey';
   readonly scientificName = 'Pandion haliaetus';
   readonly habitats = [HabitatType.WETLAND];
-  readonly foodCost = [FoodType.FISH, FoodType.FISH, FoodType.FISH];
+  readonly foodCost = [FoodType.FISH];
   readonly nestType = NestType.PLATFORM;
   readonly eggCapacity = 2;
-  readonly wingspan = 163;
+  readonly wingspan = 160;
   readonly points = 5;
-  readonly powerType = PowerType.GAME_END;
-  readonly powerText = 'Game End: 2 points for each fish in your supply.';
+  readonly powerType = PowerType.BROWN;
+  readonly powerText = 'All players gain 1 fish from the supply.';
 
-  getGameEndPoints(player: Player): number {
-    return player.getFoodCount(FoodType.FISH) * 2;
+  onActivate(_player: Player, game: Game): void {
+    for (const p of game.getPlayers()) {
+      p.addFood(FoodType.FISH);
+    }
   }
 }

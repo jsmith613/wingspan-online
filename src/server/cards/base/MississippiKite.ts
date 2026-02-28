@@ -1,0 +1,30 @@
+import { BirdCard } from '../BirdCard';
+import { BirdCardName } from '../../../common/cards/BirdCardName';
+import { FoodType } from '../../../common/game/FoodType';
+import { NestType } from '../../../common/game/NestType';
+import { HabitatType } from '../../../common/game/HabitatType';
+import { PowerType } from '../../../common/game/PowerType';
+import type { Player } from '../../Player';
+import type { Game } from '../../Game';
+
+export class MississippiKite extends BirdCard {
+  readonly name = BirdCardName.MISSISSIPPI_KITE;
+  readonly commonName = 'Mississippi Kite';
+  readonly scientificName = 'Ictinia mississippiensis';
+  readonly habitats = [HabitatType.FOREST, HabitatType.GRASSLAND];
+  readonly foodCost = [FoodType.INVERTEBRATE, FoodType.RODENT];
+  readonly nestType = NestType.PLATFORM;
+  readonly eggCapacity = 1;
+  readonly wingspan = 79;
+  readonly points = 4;
+  readonly powerType = PowerType.BROWN;
+  readonly powerText = 'Roll all dice not in birdfeeder. If any are rodent, cache 1 rodent from the supply on this bird.';
+
+  onActivate(player: Player, game: Game): void {
+    const result = game.birdfeeder.rollOutsideDice();
+    if (result.includes(FoodType.RODENT)) {
+      const self = player.board.getAllBirds().find(b => b.name === this.name);
+      if (self) self.cachedFood++;
+    }
+  }
+}

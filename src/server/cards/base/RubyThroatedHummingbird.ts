@@ -5,26 +5,25 @@ import { NestType } from '../../../common/game/NestType';
 import { HabitatType } from '../../../common/game/HabitatType';
 import { PowerType } from '../../../common/game/PowerType';
 import type { Player } from '../../Player';
+import type { Game } from '../../Game';
+import { GainFood } from '../../deferredActions/GainFood';
 
-/**
- * Ruby-throated Hummingbird - Game-end power: 2 points per fruit in your supply.
- * Habitats: Forest. Nest: Bowl. Eggs: 2. Wingspan: 11cm. Points: 2.
- * Food: Wild.
- */
 export class RubyThroatedHummingbird extends BirdCard {
   readonly name = BirdCardName.RUBY_THROATED_HUMMINGBIRD;
-  readonly commonName = 'Ruby-throated Hummingbird';
+  readonly commonName = 'Ruby-Throated Hummingbird';
   readonly scientificName = 'Archilochus colubris';
-  readonly habitats = [HabitatType.FOREST];
+  readonly habitats = [HabitatType.FOREST, HabitatType.GRASSLAND, HabitatType.WETLAND];
   readonly foodCost = [FoodType.WILD];
   readonly nestType = NestType.BOWL;
   readonly eggCapacity = 2;
-  readonly wingspan = 11;
-  readonly points = 2;
-  readonly powerType = PowerType.GAME_END;
-  readonly powerText = 'Game End: 2 points for each fruit in your supply.';
+  readonly wingspan = 10;
+  readonly points = 4;
+  readonly powerType = PowerType.BROWN;
+  readonly powerText = 'Each player gains 1 die from the birdfeeder, starting with the player of your choice.';
 
-  getGameEndPoints(player: Player): number {
-    return player.getFoodCount(FoodType.FRUIT) * 2;
+  onActivate(player: Player, game: Game): void {
+    for (const p of game.getPlayers()) {
+      game.deferredActions.push(new GainFood(p, 1));
+    }
   }
 }

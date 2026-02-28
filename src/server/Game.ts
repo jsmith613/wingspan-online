@@ -137,6 +137,21 @@ export class Game {
     this.discardPile.push(card);
   }
 
+  /** Alias for discardCard, used by bird powers. */
+  discardBirdCard(card: BirdCardName): void {
+    this.discardPile.push(card);
+  }
+
+  /** Get all players in the game. */
+  getPlayers(): Player[] {
+    return this.players;
+  }
+
+  /** Create a BirdCard instance from a card name (for checking properties). */
+  createBirdCardInstance(name: BirdCardName): import('./cards/BirdCard').BirdCard | null {
+    return createBirdCard(name);
+  }
+
   // =========================================================================
   // Game Flow
   // =========================================================================
@@ -498,6 +513,30 @@ export class Game {
     habitat: HabitatType,
     card: import('./cards/BirdCard').BirdCard | null
   ): PlayerInputModel | undefined {
+    this.playBirdFromHand(player, birdName, habitat, card);
+
+    // Pink powers can require input from non-active players before the turn advances.
+    const betweenTurnsInput = this.deferredActions.runUntilInput(this);
+    if (betweenTurnsInput) {
+      this.waitingFor = betweenTurnsInput;
+      return betweenTurnsInput;
+    }
+
+    return this.finishTurn();
+  }
+
+  /**
+   * Play a bird from hand into a habitat, paying normal food + egg costs and triggering powers/events.
+   * This is shared by normal PLAY_BIRD and "play an additional bird" white powers.
+   */
+  playBirdFromHand(
+    player: Player,
+    birdName: BirdCardName,
+    habitat: HabitatType,
+    cardOverride?: import('./cards/BirdCard').BirdCard | null,
+  ): void {
+    const card = cardOverride ?? createBirdCard(birdName);
+
     // Remove card from hand
     player.removeCardFromHand(birdName);
 
@@ -544,20 +583,11 @@ export class Game {
 
     // Resolve white "when played" powers immediately after placement.
     if (card) {
-      card.onPlay(player, this);
+      card.onPlay(player, this, habitat);
     }
 
     // Trigger "another player plays a bird" pink powers.
     this.fireGameEvent(GameEvent.BIRD_PLAYED, player);
-
-    // Pink powers can require input from non-active players before the turn advances.
-    const betweenTurnsInput = this.deferredActions.runUntilInput(this);
-    if (betweenTurnsInput) {
-      this.waitingFor = betweenTurnsInput;
-      return betweenTurnsInput;
-    }
-
-    return this.finishTurn();
   }
 
   /** Handle GAIN_FOOD action via habitat. */

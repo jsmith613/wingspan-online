@@ -7,28 +7,28 @@ import { PowerType } from '../../../common/game/PowerType';
 import type { Player } from '../../Player';
 import type { Game } from '../../Game';
 
-/**
- * Red-tailed Hawk - White power: When played, draw 2 cards.
- * Habitats: Forest. Nest: Platform. Eggs: 2. Wingspan: 122cm. Points: 5.
- * Food: Rodent, Rodent.
- */
 export class RedTailedHawk extends BirdCard {
   readonly name = BirdCardName.RED_TAILED_HAWK;
-  readonly commonName = 'Red-tailed Hawk';
+  readonly commonName = 'Red-Tailed Hawk';
   readonly scientificName = 'Buteo jamaicensis';
-  readonly habitats = [HabitatType.FOREST];
+  readonly habitats = [HabitatType.FOREST, HabitatType.GRASSLAND, HabitatType.WETLAND];
   readonly foodCost = [FoodType.RODENT, FoodType.RODENT];
   readonly nestType = NestType.PLATFORM;
   readonly eggCapacity = 2;
-  readonly wingspan = 122;
+  readonly wingspan = 124;
   readonly points = 5;
-  readonly powerType = PowerType.WHITE;
-  readonly powerText = 'When played: draw 2 cards.';
+  readonly powerType = PowerType.BROWN;
+  readonly powerText = 'Look at a card from the deck. If less than 75cm, tuck it behind this bird. If not, discard it.';
 
-  onPlay(player: Player, game: Game): void {
-    for (let i = 0; i < 2; i++) {
-      const card = game.drawFromDeck();
-      if (card) player.addCardToHand(card);
+  onActivate(player: Player, game: Game): void {
+    const card = game.drawFromDeck();
+    if (!card) return;
+    const birdCard = game.createBirdCardInstance(card);
+    if (birdCard && birdCard.wingspan < 75) {
+      const self = player.board.getAllBirds().find(b => b.name === this.name);
+      if (self) self.tuckedCards++;
+    } else {
+      game.discardBirdCard(card);
     }
   }
 }

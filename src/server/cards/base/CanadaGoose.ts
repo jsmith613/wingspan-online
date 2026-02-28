@@ -6,33 +6,29 @@ import { HabitatType } from '../../../common/game/HabitatType';
 import { PowerType } from '../../../common/game/PowerType';
 import type { Player } from '../../Player';
 import type { Game } from '../../Game';
-import { LayEggs } from '../../deferredActions/LayEggs';
 
-/**
- * Canada Goose - Brown power: Lay 1 egg on each bird in this habitat.
- * Habitats: Wetland, Grassland. Nest: Ground. Eggs: 5. Wingspan: 170cm. Points: 4.
- * Food: Seed, Seed.
- */
 export class CanadaGoose extends BirdCard {
   readonly name = BirdCardName.CANADA_GOOSE;
   readonly commonName = 'Canada Goose';
   readonly scientificName = 'Branta canadensis';
-  readonly habitats = [HabitatType.WETLAND, HabitatType.GRASSLAND];
+  readonly habitats = [HabitatType.GRASSLAND, HabitatType.WETLAND];
   readonly foodCost = [FoodType.SEED, FoodType.SEED];
   readonly nestType = NestType.GROUND;
-  readonly eggCapacity = 5;
-  readonly wingspan = 170;
-  readonly points = 4;
+  readonly eggCapacity = 3;
+  readonly wingspan = 132;
+  readonly points = 3;
   readonly powerType = PowerType.BROWN;
-  readonly powerText = 'Lay 1 egg on each bird in this habitat.';
+  readonly powerText = 'Discard 1 seed to tuck 2 card from the deck behind this bird.';
 
   onActivate(player: Player, game: Game): void {
-    // Find which habitat this bird is in
-    for (const habitat of this.habitats) {
-      const birds = player.board.getBirdsInHabitat(habitat);
-      if (birds.some(b => b.name === this.name)) {
-        game.deferredActions.push(new LayEggs(player, birds.length));
-        return;
+    if (!player.removeFood(FoodType.SEED)) return;
+    const self = player.board.getAllBirds().find(b => b.name === this.name);
+    if (!self) return;
+    for (let i = 0; i < 2; i++) {
+      const card = game.drawFromDeck();
+      if (card) {
+        self.tuckedCards++;
+        game.discardBirdCard(card);
       }
     }
   }

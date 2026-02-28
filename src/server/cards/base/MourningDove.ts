@@ -5,26 +5,25 @@ import { NestType } from '../../../common/game/NestType';
 import { HabitatType } from '../../../common/game/HabitatType';
 import { PowerType } from '../../../common/game/PowerType';
 import type { Player } from '../../Player';
+import type { Game } from '../../Game';
 
-/**
- * Mourning Dove - Game-end power: 1 point per seed in your supply.
- * Habitats: Grassland. Nest: Bowl. Eggs: 2. Wingspan: 45cm. Points: 1.
- * Food: Seed.
- */
 export class MourningDove extends BirdCard {
   readonly name = BirdCardName.MOURNING_DOVE;
   readonly commonName = 'Mourning Dove';
   readonly scientificName = 'Zenaida macroura';
-  readonly habitats = [HabitatType.GRASSLAND];
+  readonly habitats = [HabitatType.FOREST, HabitatType.GRASSLAND, HabitatType.WETLAND];
   readonly foodCost = [FoodType.SEED];
-  readonly nestType = NestType.BOWL;
-  readonly eggCapacity = 2;
-  readonly wingspan = 45;
-  readonly points = 1;
-  readonly powerType = PowerType.GAME_END;
-  readonly powerText = 'Game End: 1 point for each seed in your supply.';
+  readonly nestType = NestType.PLATFORM;
+  readonly eggCapacity = 5;
+  readonly wingspan = 46;
+  readonly points = 0;
+  readonly powerType = PowerType.BROWN;
+  readonly powerText = 'Lay 1 egg on this bird.';
 
-  getGameEndPoints(player: Player): number {
-    return player.getFoodCount(FoodType.SEED);
+  onActivate(player: Player, _game: Game): void {
+    const self = player.board.getAllBirds().find(b => b.name === this.name);
+    if (self && self.eggs < this.eggCapacity) {
+      self.eggs++;
+    }
   }
 }

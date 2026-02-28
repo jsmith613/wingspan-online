@@ -161,10 +161,19 @@ export default defineComponent({
   }
 }
 
-// Habitat-tinted top border
-.card-habitat-forest { border-top: 4px solid #4a7c59; }
-.card-habitat-grassland { border-top: 4px solid #a8b54a; }
-.card-habitat-wetland { border-top: 4px solid #4a90a8; }
+// Habitat-tinted card
+.card-habitat-forest {
+  border-top: 4px solid #4a7c59;
+  background: linear-gradient(180deg, #e8f0e0 0%, #f5f0e8 35%);
+}
+.card-habitat-grassland {
+  border-top: 4px solid #a8b54a;
+  background: linear-gradient(180deg, #f5f0d0 0%, #f5f0e8 35%);
+}
+.card-habitat-wetland {
+  border-top: 4px solid #4a90a8;
+  background: linear-gradient(180deg, #d6eaf8 0%, #f5f0e8 35%);
+}
 
 .card-top {
   display: flex;
@@ -183,17 +192,19 @@ export default defineComponent({
 .habitat-box {
   background: rgba(0, 0, 0, 0.06);
   border-radius: 6px;
-  padding: 4px;
+  padding: 4px 6px;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
+  min-height: 32px;
 }
 
 .habitat-icon {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   object-fit: contain;
+  flex-shrink: 0;
 }
 
 .food-cost-strip {

@@ -103,6 +103,24 @@ export class Birdfeeder {
     );
   }
 
+  /**
+   * Roll all dice that are NOT currently in the birdfeeder (i.e. already taken).
+   * Used by predator birds. Returns the food types shown on those re-rolled dice.
+   */
+  rollOutsideDice(): FoodType[] {
+    const results: FoodType[] = [];
+    for (const die of this.dice) {
+      if (die.taken) {
+        die.face = this.rollDie();
+        for (const food of die.face.foods) {
+          results.push(food);
+        }
+        // Die stays taken — it was rolled for the predator check, not returned to feeder
+      }
+    }
+    return results;
+  }
+
   /** Get the count of remaining dice. */
   getRemainingCount(): number {
     return this.dice.filter(d => !d.taken).length;

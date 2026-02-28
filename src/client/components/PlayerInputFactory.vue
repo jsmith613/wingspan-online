@@ -148,7 +148,7 @@ export default defineComponent({
   },
   computed: {
     showBackButton(): boolean {
-      if (this.input.type === 'SELECT_FOOD' && (this.input as any).lockBack) {
+      if ((this.input as any).lockBack) {
         return false;
       }
       const noBack = ['SELECT_ACTION', 'SELECT_BIRD_TO_KEEP', 'SELECT_STARTING_FOOD', 'SELECT_BONUS_CARD'];

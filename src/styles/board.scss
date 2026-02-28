@@ -17,9 +17,15 @@
   padding: $space-sm;
   border-radius: $radius-md;
 
-  &.habitat-FOREST { background-color: $color-forest-bg; }
-  &.habitat-GRASSLAND { background-color: $color-grassland-bg; }
-  &.habitat-WETLAND { background-color: $color-wetland-bg; }
+  &.habitat-FOREST {
+    background: $color-forest-bg;
+  }
+  &.habitat-GRASSLAND {
+    background: $color-grassland-bg;
+  }
+  &.habitat-WETLAND {
+    background: $color-wetland-bg;
+  }
 
   .habitat-header {
     width: 90px;

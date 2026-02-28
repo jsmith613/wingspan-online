@@ -4,22 +4,24 @@ import { FoodType } from '../../../common/game/FoodType';
 import { NestType } from '../../../common/game/NestType';
 import { HabitatType } from '../../../common/game/HabitatType';
 import { PowerType } from '../../../common/game/PowerType';
+import type { Player } from '../../Player';
+import type { Game } from '../../Game';
+import { DrawCards } from '../../deferredActions/DrawCards';
 
-/**
- * Mallard - No power.
- * Habitats: Wetland. Nest: Ground. Eggs: 5. Wingspan: 91cm. Points: 2.
- * Food: Seed, Invertebrate.
- */
 export class Mallard extends BirdCard {
   readonly name = BirdCardName.MALLARD;
   readonly commonName = 'Mallard';
   readonly scientificName = 'Anas platyrhynchos';
   readonly habitats = [HabitatType.WETLAND];
-  readonly foodCost = [FoodType.SEED, FoodType.INVERTEBRATE];
+  readonly foodCost = [FoodType.INVERTEBRATE, FoodType.SEED];
   readonly nestType = NestType.GROUND;
-  readonly eggCapacity = 5;
-  readonly wingspan = 91;
-  readonly points = 2;
-  readonly powerType = PowerType.NONE;
-  readonly powerText = '';
+  readonly eggCapacity = 4;
+  readonly wingspan = 89;
+  readonly points = 0;
+  readonly powerType = PowerType.BROWN;
+  readonly powerText = 'Draw 1 card.';
+
+  onActivate(player: Player, game: Game): void {
+    game.deferredActions.push(new DrawCards(player, 1));
+  }
 }

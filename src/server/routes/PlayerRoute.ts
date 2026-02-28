@@ -82,7 +82,7 @@ export function createPlayerRouter(db: IDatabase): Router {
       // Handle cancel/back
       if (input.cancel) {
         if (!game.canCancelCurrentInput()) {
-          res.status(400).json({ error: 'Cannot cancel after rerolling birdfeeder during Gain Food.' });
+          res.status(400).json({ error: 'Cannot cancel this input step.' });
           return;
         }
         if (input.cancelType === 'habitat') {
@@ -119,6 +119,8 @@ function routeInput(
   inputType: InputType,
   input: any
 ): void {
+  const hasDeferredAction = !!game.deferredActions?.getCurrentAction?.();
+
   switch (inputType) {
     case InputType.SELECT_BIRD_TO_KEEP:
       // input: { selectedBirds: BirdCardName[] }
@@ -137,12 +139,20 @@ function routeInput(
 
     case InputType.SELECT_BIRD:
       // input: { selectedBirds: BirdCardName[] }
-      game.handleBirdSelection(playerId, (input.selectedBirds || [])[0]);
+      if (hasDeferredAction) {
+        game.handleDeferredInput(playerId, input);
+      } else {
+        game.handleBirdSelection(playerId, (input.selectedBirds || [])[0]);
+      }
       break;
 
     case InputType.SELECT_HABITAT_SLOT:
       // input: { selectedHabitat: HabitatType }
-      game.handleHabitatSelection(playerId, input.selectedHabitat || input.habitat);
+      if (hasDeferredAction) {
+        game.handleDeferredInput(playerId, input);
+      } else {
+        game.handleHabitatSelection(playerId, input.selectedHabitat || input.habitat);
+      }
       break;
 
     default:

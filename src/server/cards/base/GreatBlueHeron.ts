@@ -6,27 +6,22 @@ import { HabitatType } from '../../../common/game/HabitatType';
 import { PowerType } from '../../../common/game/PowerType';
 import type { Player } from '../../Player';
 import type { Game } from '../../Game';
-import { GainFood } from '../../deferredActions/GainFood';
+import { PlayAdditionalBird } from '../../deferredActions/PlayAdditionalBird';
 
-/**
- * Great Blue Heron - Brown power: Gain 1 food from the birdfeeder.
- * Habitats: Wetland. Nest: Platform. Eggs: 3. Wingspan: 183cm. Points: 5.
- * Food: Fish, Fish.
- */
 export class GreatBlueHeron extends BirdCard {
   readonly name = BirdCardName.GREAT_BLUE_HERON;
   readonly commonName = 'Great Blue Heron';
   readonly scientificName = 'Ardea herodias';
   readonly habitats = [HabitatType.WETLAND];
-  readonly foodCost = [FoodType.FISH, FoodType.FISH];
+  readonly foodCost = [FoodType.INVERTEBRATE, FoodType.FISH];
   readonly nestType = NestType.PLATFORM;
-  readonly eggCapacity = 3;
+  readonly eggCapacity = 2;
   readonly wingspan = 183;
   readonly points = 5;
-  readonly powerType = PowerType.BROWN;
-  readonly powerText = 'Gain 1 food from the birdfeeder.';
+  readonly powerType = PowerType.WHITE;
+  readonly powerText = 'Play an additional bird in your wetland. Pay its normal cost.';
 
-  onActivate(player: Player, game: Game): void {
-    game.deferredActions.push(new GainFood(player, 1));
+  onPlay(player: Player, game: Game): void {
+    game.deferredActions.push(new PlayAdditionalBird(player, [HabitatType.WETLAND]));
   }
 }

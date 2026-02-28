@@ -2,7 +2,6 @@
 
 .bird-card {
   width: $card-width;
-  border: 2px solid $color-border;
   border-radius: $radius-md;
   background: $color-white;
   box-shadow: $shadow-sm;
@@ -16,7 +15,8 @@
 
   &.card-selectable {
     cursor: pointer;
-    border-color: $color-success;
+    border: none;
+    box-shadow: $shadow-sm;
 
     &:hover {
       transform: translateY(-4px);
@@ -25,8 +25,7 @@
   }
 
   &.card-selected {
-    border-color: $color-forest;
-    box-shadow: 0 0 0 2px $color-forest;
+    box-shadow: 0 0 0 3px $color-forest, 0 4px 12px rgba(0, 0, 0, 0.3);
   }
 
   .card-header {
