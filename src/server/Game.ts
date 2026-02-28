@@ -1,0 +1,677 @@
+import { GameId, PlayerId } from '../common/Types';
+import { Phase } from '../common/game/Phase';
+import { ActionType } from '../common/game/ActionType';
+import { HabitatType } from '../common/game/HabitatType';
+import { FoodType } from '../common/game/FoodType';
+import { BirdCardName } from '../common/cards/BirdCardName';
+import { BonusCardName } from '../common/cards/BonusCardName';
+import {
+  MAX_ROUNDS,
+  ACTION_CUBES_PER_ROUND,
+  BIRD_TRAY_SIZE,
+  STARTING_FOOD_COUNT,
+} from '../common/constants';
+import { PlayerInputModel } from '../common/input/PlayerInputModel';
+import { InputType } from '../common/input/InputType';
+import { GameViewModel } from '../common/models/GameViewModel';
+import { Player } from './Player';
+import { Birdfeeder } from './birdfeeder/Birdfeeder';
+import { DeferredActionsQueue } from './deferredActions/DeferredActionsQueue';
+import { executeHabitatAction } from './habitats/HabitatAction';
+import { SerializedGame } from './SerializedGame';
+import { mulberry32, shuffle } from '../common/prng';
+import { createBirdCard } from './cards/createCard';
+
+export class Game {
+  public readonly id: GameId;
+  public phase: Phase;
+  public round: number;
+  public currentPlayerIndex: number;
+  public players: Player[];
+  public birdfeeder: Birdfeeder;
+  public deferredActions: DeferredActionsQueue;
+
+  private seed: number;
+  private rng: () => number;
+  private deck: BirdCardName[];
+  private discardPile: BirdCardName[];
+  private birdTray: BirdCardName[];
+  private bonusDeck: BonusCardName[];
+
+  private waitingFor: PlayerInputModel | null = null;
+  private pendingBirdPlacement: { birdName: BirdCardName; card: import('./cards/BirdCard').BirdCard | null } | null = null;
+
+  constructor(id: GameId, playerNames: string[], seed?: number) {
+    this.id = id;
+    this.seed = seed ?? Date.now();
+    this.rng = mulberry32(this.seed);
+    this.phase = Phase.SETUP;
+    this.round = 0;
+    this.currentPlayerIndex = 0;
+    this.deferredActions = new DeferredActionsQueue();
+
+    // Create players
+    this.players = playerNames.map((name, i) => {
+      const playerId = `player_${i}` as PlayerId;
+      return new Player(playerId, name, ACTION_CUBES_PER_ROUND[0]);
+    });
+
+    // Initialize birdfeeder
+    this.birdfeeder = new Birdfeeder(this.rng);
+
+    // Initialize decks
+    this.deck = this.createBirdDeck();
+    this.discardPile = [];
+    this.bonusDeck = this.createBonusDeck();
+    this.birdTray = [];
+  }
+
+  /** Get the current player. */
+  get currentPlayer(): Player {
+    return this.players[this.currentPlayerIndex];
+  }
+
+  /** Get a player by ID. */
+  getPlayer(id: PlayerId): Player | undefined {
+    return this.players.find(p => p.id === id);
+  }
+
+  /** Create and shuffle the bird deck. */
+  private createBirdDeck(): BirdCardName[] {
+    const cards = Object.values(BirdCardName);
+    return shuffle([...cards], this.rng);
+  }
+
+  /** Create and shuffle the bonus deck. */
+  private createBonusDeck(): BonusCardName[] {
+    const cards = Object.values(BonusCardName);
+    return shuffle([...cards], this.rng);
+  }
+
+  /** Draw a card from the bird deck. Returns null if empty. */
+  drawFromDeck(): BirdCardName | null {
+    if (this.deck.length === 0) {
+      // Reshuffle discard pile
+      if (this.discardPile.length === 0) return null;
+      this.deck = shuffle([...this.discardPile], this.rng);
+      this.discardPile = [];
+    }
+    return this.deck.pop() ?? null;
+  }
+
+  /** Draw a bonus card from the bonus deck. */
+  drawBonusCard(): BonusCardName | null {
+    return this.bonusDeck.pop() ?? null;
+  }
+
+  /** Get the face-up bird tray cards. */
+  getBirdTray(): BirdCardName[] {
+    return [...this.birdTray];
+  }
+
+  /** Take a specific card from the bird tray. */
+  takeFromTray(card: BirdCardName): BirdCardName | null {
+    const idx = this.birdTray.indexOf(card);
+    if (idx === -1) return null;
+    this.birdTray.splice(idx, 1);
+    // Refill tray
+    this.refillBirdTray();
+    return card;
+  }
+
+  /** Refill the bird tray to BIRD_TRAY_SIZE. */
+  private refillBirdTray(): void {
+    while (this.birdTray.length < BIRD_TRAY_SIZE) {
+      const card = this.drawFromDeck();
+      if (!card) break;
+      this.birdTray.push(card);
+    }
+  }
+
+  /** Discard a card. */
+  discardCard(card: BirdCardName): void {
+    this.discardPile.push(card);
+  }
+
+  // =========================================================================
+  // Game Flow
+  // =========================================================================
+
+  /**
+   * Start the game. Transitions from SETUP to dealing cards and starting setup choices.
+   */
+  startGame(): PlayerInputModel | undefined {
+    this.refillBirdTray();
+    this.dealStartingCards();
+    this.phase = Phase.SETUP;
+
+    // Return first player's setup choices
+    this.waitingFor = this.getSetupInput(this.players[0]);
+    return this.waitingFor;
+  }
+
+  /** Deal starting hands: 5 bird cards + 5 food + 2 bonus cards per player. */
+  private dealStartingCards(): void {
+    for (const player of this.players) {
+      // Deal 5 bird cards
+      for (let i = 0; i < 5; i++) {
+        const card = this.drawFromDeck();
+        if (card) player.addCardToHand(card);
+      }
+      // Give starting food (5 of each, one per type... no: 1 of each of the 5 base types)
+      const baseFoods = [
+        FoodType.INVERTEBRATE,
+        FoodType.SEED,
+        FoodType.FISH,
+        FoodType.FRUIT,
+        FoodType.RODENT,
+      ];
+      for (const food of baseFoods) {
+        player.addFood(food);
+      }
+      // Deal 2 bonus cards
+      for (let i = 0; i < 2; i++) {
+        const bonus = this.drawBonusCard();
+        if (bonus) player.bonusCards.push(bonus);
+      }
+    }
+  }
+
+  /** Get the setup input for a player (choose which birds to keep). */
+  private getSetupInput(player: Player): PlayerInputModel {
+    const birdDetails = player.hand.map(name => {
+      const card = createBirdCard(name);
+      if (card) return card.toClientCard();
+      return {
+        name,
+        commonName: String(name).replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+        scientificName: '',
+        habitats: Object.values(HabitatType),
+        foodCost: [] as FoodType[],
+        nestType: 'BOWL' as any,
+        eggCapacity: 0,
+        wingspan: 0,
+        points: 0,
+        powerType: 'NONE' as any,
+        powerText: '',
+        eggs: 0,
+        cachedFood: 0,
+        tuckedCards: 0,
+      };
+    });
+    return {
+      type: InputType.SELECT_BIRD_TO_KEEP,
+      birds: [...player.hand],
+      birdDetails,
+      max: player.hand.length,
+    };
+  }
+
+  /**
+   * Handle a player's setup choice (which birds to keep).
+   * Each kept bird costs 1 food from starting supply.
+   */
+  handleSetupChoice(playerId: PlayerId, keptBirds: BirdCardName[]): PlayerInputModel | undefined {
+    const player = this.getPlayer(playerId);
+    if (!player) throw new Error(`Player ${playerId} not found`);
+
+    // Remove birds not kept
+    const discarded = player.hand.filter(c => !keptBirds.includes(c));
+    for (const card of discarded) {
+      player.removeCardFromHand(card);
+      this.discardCard(card);
+    }
+
+    // Each kept bird costs 1 food — player needs to choose which food to discard
+    const foodToDiscard = keptBirds.length;
+    const foodToKeep = STARTING_FOOD_COUNT - foodToDiscard;
+
+    // If they need to discard food, ask them
+    if (foodToDiscard > 0 && player.food.length > foodToKeep) {
+      this.waitingFor = {
+        type: InputType.SELECT_STARTING_FOOD,
+        availableFood: [...player.food],
+        count: foodToKeep,
+      };
+      return this.waitingFor;
+    }
+
+    // Move to next player's setup or start the game
+    return this.advanceSetup();
+  }
+
+  /** Handle a player's starting food selection. */
+  handleStartingFoodChoice(playerId: PlayerId, keptFood: FoodType[]): PlayerInputModel | undefined {
+    const player = this.getPlayer(playerId);
+    if (!player) throw new Error(`Player ${playerId} not found`);
+
+    player.food = [...keptFood];
+
+    return this.advanceSetup();
+  }
+
+  /** Advance to the next player's setup, or start round 1. */
+  private advanceSetup(): PlayerInputModel | undefined {
+    this.currentPlayerIndex++;
+    if (this.currentPlayerIndex < this.players.length) {
+      this.waitingFor = this.getSetupInput(this.players[this.currentPlayerIndex]);
+      return this.waitingFor;
+    }
+    // All players done with setup — start round 1
+    this.currentPlayerIndex = 0;
+    return this.startRound();
+  }
+
+  // =========================================================================
+  // Round Management
+  // =========================================================================
+
+  /** Start a new round. */
+  startRound(): PlayerInputModel | undefined {
+    this.round++;
+    if (this.round > MAX_ROUNDS) {
+      return this.endGame();
+    }
+
+    this.phase = Phase.ROUND_START;
+
+    // Set action cubes for this round
+    const cubes = ACTION_CUBES_PER_ROUND[this.round - 1];
+    for (const player of this.players) {
+      player.actionCubes = cubes;
+    }
+
+    // Start first player's turn
+    this.currentPlayerIndex = 0;
+    return this.startPlayerTurn();
+  }
+
+  /** Start the current player's turn. */
+  startPlayerTurn(): PlayerInputModel | undefined {
+    const player = this.currentPlayer;
+
+    if (player.actionCubes <= 0) {
+      return this.advanceTurn();
+    }
+
+    this.phase = Phase.PLAYER_TURN;
+
+    // Build available actions
+    const availableActions: ActionType[] = [
+      ActionType.GAIN_FOOD,
+      ActionType.LAY_EGGS,
+      ActionType.DRAW_CARDS,
+    ];
+
+    // PLAY_BIRD is available if the player has birds in hand
+    if (player.hand.length > 0) {
+      availableActions.unshift(ActionType.PLAY_BIRD);
+    }
+
+    this.waitingFor = {
+      type: InputType.SELECT_ACTION,
+      availableActions,
+    };
+
+    return this.waitingFor;
+  }
+
+  /**
+   * Handle a player choosing an action for their turn.
+   */
+  handleActionChoice(playerId: PlayerId, action: ActionType): PlayerInputModel | undefined {
+    const player = this.getPlayer(playerId);
+    if (!player) throw new Error(`Player ${playerId} not found`);
+
+    if (!player.useActionCube()) {
+      throw new Error('No action cubes remaining');
+    }
+
+    switch (action) {
+      case ActionType.PLAY_BIRD:
+        return this.handlePlayBird(player);
+      case ActionType.GAIN_FOOD:
+        return this.handleGainFood(player);
+      case ActionType.LAY_EGGS:
+        return this.handleLayEggs(player);
+      case ActionType.DRAW_CARDS:
+        return this.handleDrawCards(player);
+    }
+  }
+
+  /** Handle PLAY_BIRD action — ask which bird to play. */
+  handlePlayBird(player: Player): PlayerInputModel | undefined {
+    const birdDetails = player.hand.map(name => {
+      const card = createBirdCard(name);
+      if (card) return card.toClientCard();
+      // Placeholder/unknown card — return minimal data
+      return {
+        name,
+        commonName: String(name).replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+        scientificName: '',
+        habitats: Object.values(HabitatType),
+        foodCost: [] as FoodType[],
+        nestType: 'BOWL' as any,
+        eggCapacity: 0,
+        wingspan: 0,
+        points: 0,
+        powerType: 'NONE' as any,
+        powerText: '',
+        eggs: 0,
+        cachedFood: 0,
+        tuckedCards: 0,
+      };
+    });
+
+    const unaffordableBirds = player.hand.filter(name => {
+      const card = createBirdCard(name);
+      if (!card) return false;
+      return !player.canAffordFoodCost({ foods: [...card.foodCost], totalRequired: card.foodCost.length, wildCount: 0 });
+    });
+
+    this.waitingFor = {
+      type: InputType.SELECT_BIRD,
+      availableBirds: [...player.hand],
+      birdDetails,
+      unaffordableBirds,
+      min: 1,
+      max: 1,
+    };
+    return this.waitingFor;
+  }
+
+  /**
+   * Cancel the current action and return to action selection.
+   * Restores the action cube that was spent.
+   */
+  handleCancelAction(playerId: PlayerId): PlayerInputModel | undefined {
+    const player = this.getPlayer(playerId);
+    if (!player) throw new Error(`Player ${playerId} not found`);
+
+    // Restore the action cube
+    player.actionCubes++;
+
+    // Clear any pending state
+    this.pendingBirdPlacement = null;
+    this.deferredActions.clear();
+
+    // Return to action selection
+    return this.startPlayerTurn();
+  }
+
+  /**
+   * Handle a player selecting a bird to play (after choosing PLAY_BIRD action).
+   */
+  handleBirdSelection(playerId: PlayerId, birdName: BirdCardName): PlayerInputModel | undefined {
+    const player = this.getPlayer(playerId);
+    if (!player) throw new Error(`Player ${playerId} not found`);
+
+    // Look up the bird card data
+    const card = createBirdCard(birdName);
+
+    // Card is NOT removed from hand here — it's removed when the player confirms habitat placement.
+
+    // Determine valid habitats
+    const validHabitats = card
+      ? card.habitats.filter(h => player.board.hasSpace(h))
+      : Object.values(HabitatType).filter(h => player.board.hasSpace(h));
+
+    if (validHabitats.length === 0) {
+      // No space — shouldn't happen, but advance turn
+      return this.finishTurn();
+    }
+
+    // Always ask which habitat (so user can back out)
+    this.pendingBirdPlacement = { birdName, card };
+    this.waitingFor = {
+      type: InputType.SELECT_HABITAT_SLOT,
+      availableHabitats: validHabitats,
+    };
+    return this.waitingFor;
+  }
+
+  /**
+   * Handle habitat selection for placing a bird.
+   */
+  handleHabitatSelection(playerId: PlayerId, habitat: HabitatType): PlayerInputModel | undefined {
+    const player = this.getPlayer(playerId);
+    if (!player) throw new Error(`Player ${playerId} not found`);
+
+    if (!this.pendingBirdPlacement) throw new Error('No bird pending placement');
+    const { birdName, card } = this.pendingBirdPlacement;
+    this.pendingBirdPlacement = null;
+
+    return this.placeBirdInHabitat(player, birdName, habitat, card);
+  }
+
+  /**
+   * Cancel habitat selection and go back to bird selection.
+   * Restores the bird to hand and refunds any food paid.
+   */
+  handleCancelHabitat(playerId: PlayerId): PlayerInputModel | undefined {
+    const player = this.getPlayer(playerId);
+    if (!player) throw new Error(`Player ${playerId} not found`);
+
+    if (!this.pendingBirdPlacement) {
+      // No pending placement — fall back to full cancel
+      return this.handleCancelAction(playerId);
+    }
+
+    this.pendingBirdPlacement = null;
+
+    // Card never left hand and food was never paid, so nothing to refund.
+
+    // Re-show bird selection
+    return this.handlePlayBird(player);
+  }
+
+  /** Place a bird on the board and finish the action. */
+  private placeBirdInHabitat(
+    player: Player,
+    birdName: BirdCardName,
+    habitat: HabitatType,
+    card: import('./cards/BirdCard').BirdCard | null
+  ): PlayerInputModel | undefined {
+    // Remove card from hand
+    player.removeCardFromHand(birdName);
+
+    // Pay food cost
+    if (card) {
+      for (const food of card.foodCost) {
+        if (food === FoodType.WILD) {
+          // Remove any food
+          if (player.food.length > 0) {
+            player.food.splice(0, 1);
+          }
+        } else {
+          player.removeFood(food);
+        }
+      }
+    }
+
+    // Pay egg cost for the column
+    const eggCost = player.getEggCostForHabitat(habitat);
+    // Simple: remove eggs from first birds that have them
+    let eggsRemaining = eggCost;
+    if (eggsRemaining > 0) {
+      for (const bird of player.board.getAllBirds()) {
+        while (bird.eggs > 0 && eggsRemaining > 0) {
+          bird.eggs--;
+          eggsRemaining--;
+        }
+        if (eggsRemaining === 0) break;
+      }
+    }
+
+    // Place the bird
+    player.board.placeBird(habitat, {
+      name: birdName,
+      eggs: 0,
+      cachedFood: 0,
+      tuckedCards: 0,
+    });
+
+    return this.finishTurn();
+  }
+
+  /** Handle GAIN_FOOD action via habitat. */
+  private handleGainFood(player: Player): PlayerInputModel | undefined {
+    executeHabitatAction(player, HabitatType.FOREST, this);
+    const input = this.deferredActions.runUntilInput(this);
+    if (input) {
+      this.waitingFor = input;
+      return input;
+    }
+    // Nothing to do (e.g. empty birdfeeder) — finish turn
+    return this.finishTurn();
+  }
+
+  /** Handle LAY_EGGS action via habitat. */
+  private handleLayEggs(player: Player): PlayerInputModel | undefined {
+    executeHabitatAction(player, HabitatType.GRASSLAND, this);
+    const input = this.deferredActions.runUntilInput(this);
+    if (input) {
+      this.waitingFor = input;
+      return input;
+    }
+    // Nothing to do (e.g. no birds to lay eggs on) — finish turn
+    return this.finishTurn();
+  }
+
+  /** Handle DRAW_CARDS action via habitat. */
+  private handleDrawCards(player: Player): PlayerInputModel | undefined {
+    executeHabitatAction(player, HabitatType.WETLAND, this);
+    const input = this.deferredActions.runUntilInput(this);
+    if (input) {
+      this.waitingFor = input;
+      return input;
+    }
+    // Nothing to do (e.g. empty deck) — finish turn
+    return this.finishTurn();
+  }
+
+  /**
+   * Handle player input for the current deferred action.
+   */
+  handleDeferredInput(playerId: PlayerId, response: unknown): PlayerInputModel | undefined {
+    const result = this.deferredActions.handleInput(this, response);
+    if (result) {
+      this.waitingFor = result;
+      return result;
+    }
+
+    // Current action done — try next action in queue
+    const next = this.deferredActions.runUntilInput(this);
+    if (next) {
+      this.waitingFor = next;
+      return next;
+    }
+
+    // All deferred actions done — advance the turn
+    this.waitingFor = null;
+    return this.finishTurn();
+  }
+
+  /** Finish the current player's turn and advance. */
+  private finishTurn(): PlayerInputModel | undefined {
+    this.phase = Phase.BETWEEN_TURNS;
+    this.waitingFor = this.advanceTurn() || null;
+    return this.waitingFor ?? undefined;
+  }
+
+  /** Advance to the next player or end the round. */
+  private advanceTurn(): PlayerInputModel | undefined {
+    // Check if all players are out of cubes
+    const allDone = this.players.every(p => p.actionCubes <= 0);
+    if (allDone) {
+      return this.endRound();
+    }
+
+    // Move to next player
+    this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
+
+    // Skip players with no cubes
+    let attempts = 0;
+    while (this.currentPlayer.actionCubes <= 0 && attempts < this.players.length) {
+      this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
+      attempts++;
+    }
+
+    if (this.currentPlayer.actionCubes <= 0) {
+      return this.endRound();
+    }
+
+    return this.startPlayerTurn();
+  }
+
+  /** End the current round. Score round goals, then start next round. */
+  endRound(): PlayerInputModel | undefined {
+    this.phase = Phase.ROUND_END;
+    // Round goal scoring would happen here (Phase 3 / goals system)
+    return this.startRound();
+  }
+
+  /** End the game. */
+  private endGame(): PlayerInputModel | undefined {
+    this.phase = Phase.GAME_END;
+    this.waitingFor = null;
+    return undefined;
+  }
+
+  // =========================================================================
+  // View Model
+  // =========================================================================
+
+  /** Get the game view model for the client. */
+  toViewModel(): GameViewModel {
+    return {
+      id: this.id,
+      phase: this.phase,
+      round: this.round,
+      currentPlayerId: this.currentPlayer.id,
+      players: this.players.map(p => p.toViewModel()),
+      birdfeeder: {
+        dice: this.birdfeeder.getAvailableDice().map(d => ({ foods: [...d.face.foods] })),
+      },
+      birdTray: {
+        faceUpCards: [...this.birdTray],
+      },
+      roundGoals: [], // Will be populated by goal system
+      waitingFor: this.waitingFor,
+    };
+  }
+
+  // =========================================================================
+  // Serialization
+  // =========================================================================
+
+  serialize(): SerializedGame {
+    return {
+      id: this.id,
+      seed: this.seed,
+      phase: this.phase,
+      round: this.round,
+      currentPlayerIndex: this.currentPlayerIndex,
+      players: this.players.map(p => p.serialize()),
+      birdfeeder: this.birdfeeder.serialize(),
+      deck: [...this.deck],
+      discardPile: [...this.discardPile],
+      birdTray: [...this.birdTray],
+      bonusDeck: [...this.bonusDeck],
+    };
+  }
+
+  static deserialize(data: SerializedGame): Game {
+    const game = new Game(data.id, [], data.seed);
+    game.phase = data.phase;
+    game.round = data.round;
+    game.currentPlayerIndex = data.currentPlayerIndex;
+    game.players = data.players.map(p => Player.deserialize(p));
+    game.birdfeeder = Birdfeeder.deserialize(data.birdfeeder, game.rng);
+    game.deck = [...data.deck];
+    game.discardPile = [...data.discardPile];
+    game.birdTray = [...data.birdTray];
+    game.bonusDeck = [...data.bonusDeck];
+    return game;
+  }
+}

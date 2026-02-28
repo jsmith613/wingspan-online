@@ -1,0 +1,189 @@
+@import 'variables';
+
+.bird-card {
+  width: $card-width;
+  border: 2px solid $color-border;
+  border-radius: $radius-md;
+  background: $color-white;
+  box-shadow: $shadow-sm;
+  overflow: hidden;
+  font-size: $font-size-sm;
+  transition: transform $transition-fast, box-shadow $transition-fast;
+
+  &:hover {
+    box-shadow: $shadow-md;
+  }
+
+  &.card-selectable {
+    cursor: pointer;
+    border-color: $color-success;
+
+    &:hover {
+      transform: translateY(-4px);
+      box-shadow: $shadow-lg;
+    }
+  }
+
+  &.card-selected {
+    border-color: $color-forest;
+    box-shadow: 0 0 0 2px $color-forest;
+  }
+
+  .card-header {
+    padding: $space-sm;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 1px solid $color-border-light;
+
+    .card-name {
+      font-family: $font-primary;
+      font-size: $font-size-md;
+      font-weight: bold;
+      color: $color-bark;
+      flex: 1;
+    }
+
+    .card-points {
+      background: $color-forest;
+      color: $color-white;
+      font-weight: bold;
+      min-width: 24px;
+      height: 24px;
+      border-radius: $radius-round;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: $font-size-sm;
+      flex-shrink: 0;
+      margin-left: $space-xs;
+    }
+  }
+
+  .card-scientific {
+    padding: 0 $space-sm;
+    font-style: italic;
+    color: $color-text-muted;
+    font-size: $font-size-xs;
+  }
+
+  .card-details {
+    padding: $space-sm;
+    display: flex;
+    flex-wrap: wrap;
+    gap: $space-xs;
+
+    .card-habitats {
+      display: flex;
+      gap: 2px;
+
+      .habitat-icon {
+        font-size: $font-size-xs;
+        padding: 1px $space-xs;
+        border-radius: 2px;
+        font-weight: bold;
+
+        &.habitat-FOREST { background: $color-forest-bg; color: $color-forest; }
+        &.habitat-GRASSLAND { background: $color-grassland-bg; color: $color-grassland; }
+        &.habitat-WETLAND { background: $color-wetland-bg; color: $color-wetland; }
+      }
+    }
+
+    .card-food-cost {
+      display: flex;
+      gap: 2px;
+      align-items: center;
+    }
+
+    .card-nest {
+      font-size: $font-size-xs;
+      color: $color-text-light;
+    }
+  }
+
+  .card-power {
+    padding: $space-sm;
+    border-top: 1px solid $color-border-light;
+    min-height: 40px;
+
+    .power-text {
+      font-size: $font-size-xs;
+      color: $color-text-light;
+      line-height: 1.4;
+    }
+  }
+
+  .card-footer {
+    padding: $space-xs $space-sm;
+    border-top: 1px solid $color-border-light;
+    display: flex;
+    justify-content: space-between;
+    font-size: $font-size-xs;
+    color: $color-text-muted;
+    background: $color-parchment;
+
+    .card-wingspan {
+      &::before { content: 'WS: '; }
+    }
+
+    .card-eggs {
+      &::before { content: 'Eggs: '; }
+    }
+  }
+}
+
+.bird-card-mini {
+  width: $card-mini-width;
+  font-size: $font-size-xs;
+  border: 1px solid $color-border;
+  border-radius: $radius-sm;
+  background: $color-white;
+  padding: $space-xs;
+  text-align: center;
+  overflow: hidden;
+
+  .mini-name {
+    font-family: $font-primary;
+    font-weight: bold;
+    font-size: $font-size-xs;
+    color: $color-bark;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mini-points {
+    font-weight: bold;
+    color: $color-forest;
+  }
+
+  .mini-power {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: $radius-round;
+
+    &.power-BROWN { background: $color-power-brown; }
+    &.power-PINK { background: $color-power-pink; }
+    &.power-WHITE { background: $color-power-white; border: 1px solid #ccc; }
+    &.power-GAME_END { background: $color-power-gameend; }
+  }
+}
+
+.hand-cards {
+  display: flex;
+  gap: $space-sm;
+  overflow-x: auto;
+  padding: $space-md;
+  background: rgba($color-bark, 0.05);
+  border-top: 2px solid $color-border;
+
+  &::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: $color-border;
+    border-radius: 3px;
+  }
+}

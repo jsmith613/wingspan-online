@@ -1,0 +1,144 @@
+@import 'variables';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  font-family: $font-secondary;
+  font-size: $font-size-md;
+  color: $color-text;
+  background-color: $color-cream;
+}
+
+#app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+h1, h2, h3 {
+  font-family: $font-primary;
+  color: $color-bark;
+}
+
+button {
+  font-family: $font-secondary;
+  cursor: pointer;
+  border: none;
+  border-radius: $radius-md;
+  padding: $space-sm $space-md;
+  font-size: $font-size-md;
+  transition: background-color $transition-fast, transform $transition-fast;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.btn-primary {
+  background-color: $color-forest;
+  color: $color-white;
+
+  &:hover:not(:disabled) {
+    background-color: $color-forest-light;
+  }
+}
+
+.btn-secondary {
+  background-color: $color-earth;
+  color: $color-white;
+
+  &:hover:not(:disabled) {
+    background-color: $color-earth-light;
+  }
+}
+
+.btn-danger {
+  background-color: $color-accent;
+  color: $color-white;
+
+  &:hover:not(:disabled) {
+    background-color: $color-accent-light;
+  }
+}
+
+.screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $space-xl;
+}
+
+.panel {
+  background: $color-white;
+  border: 1px solid $color-border;
+  border-radius: $radius-lg;
+  padding: $space-lg;
+  box-shadow: $shadow-sm;
+}
+
+.food-icon {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border-radius: $radius-round;
+  vertical-align: middle;
+
+  &.food-INVERTEBRATE { background-color: $color-food-invertebrate; }
+  &.food-SEED { background-color: $color-food-seed; }
+  &.food-FISH { background-color: $color-food-fish; }
+  &.food-FRUIT { background-color: $color-food-fruit; }
+  &.food-RODENT { background-color: $color-food-rodent; }
+  &.food-WILD { background-color: $color-food-wild; }
+}
+
+.habitat-label {
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: $font-size-sm;
+  letter-spacing: 1px;
+
+  &.habitat-FOREST { color: $color-forest; }
+  &.habitat-GRASSLAND { color: $color-grassland; }
+  &.habitat-WETLAND { color: $color-wetland; }
+}
+
+.power-badge {
+  display: inline-block;
+  padding: 2px $space-sm;
+  border-radius: $radius-sm;
+  font-size: $font-size-xs;
+  font-weight: bold;
+  text-transform: uppercase;
+
+  &.power-BROWN { background-color: $color-power-brown; color: $color-white; }
+  &.power-PINK { background-color: $color-power-pink; color: $color-white; }
+  &.power-WHITE { background-color: $color-power-white; color: $color-text; }
+  &.power-GAME_END { background-color: $color-power-gameend; color: $color-white; }
+  &.power-NONE { background-color: $color-power-none; color: $color-text; }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}

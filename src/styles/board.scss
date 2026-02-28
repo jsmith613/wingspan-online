@@ -1,0 +1,113 @@
+@import 'variables';
+
+.player-board {
+  display: flex;
+  flex-direction: column;
+  gap: $board-gap;
+  padding: $space-md;
+  background: $color-parchment;
+  border: 2px solid $color-border;
+  border-radius: $radius-lg;
+}
+
+.habitat-row {
+  display: flex;
+  align-items: center;
+  gap: $board-gap;
+  padding: $space-sm;
+  border-radius: $radius-md;
+
+  &.habitat-FOREST { background-color: $color-forest-bg; }
+  &.habitat-GRASSLAND { background-color: $color-grassland-bg; }
+  &.habitat-WETLAND { background-color: $color-wetland-bg; }
+
+  .habitat-header {
+    width: 90px;
+    text-align: center;
+    flex-shrink: 0;
+
+    .habitat-name {
+      font-family: $font-primary;
+      font-size: $font-size-sm;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .action-strength {
+      font-size: $font-size-xs;
+      color: $color-text-light;
+      margin-top: 2px;
+    }
+  }
+
+  .slots {
+    display: flex;
+    gap: $board-gap;
+    flex: 1;
+  }
+}
+
+.bird-slot {
+  width: $slot-width;
+  min-height: $slot-height;
+  border: 1px dashed $color-border;
+  border-radius: $radius-sm;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.5);
+  position: relative;
+  transition: border-color $transition-fast, background-color $transition-fast;
+
+  &.slot-empty {
+    color: $color-text-muted;
+    font-size: $font-size-xs;
+  }
+
+  &.slot-filled {
+    border-style: solid;
+    border-color: $color-border;
+    background: $color-white;
+  }
+
+  &.slot-selectable {
+    cursor: pointer;
+    border-color: $color-success;
+    border-width: 2px;
+
+    &:hover {
+      background-color: rgba($color-success, 0.1);
+    }
+  }
+
+  .slot-egg-cost {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: $color-warning;
+    color: $color-white;
+    font-size: $font-size-xs;
+    font-weight: bold;
+    width: 18px;
+    height: 18px;
+    border-radius: $radius-round;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .slot-tokens {
+    display: flex;
+    gap: 2px;
+    margin-top: $space-xs;
+    font-size: $font-size-xs;
+
+    .token {
+      padding: 1px $space-xs;
+      border-radius: $radius-sm;
+      background: $color-earth-bg;
+    }
+  }
+}

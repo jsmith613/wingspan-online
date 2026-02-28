@@ -1,0 +1,101 @@
+// Colors - Nature/bird inspired palette
+$color-forest: #2d5016;
+$color-forest-light: #4a7c28;
+$color-forest-bg: #e8f0e0;
+
+$color-grassland: #8b7d3c;
+$color-grassland-light: #b5a44a;
+$color-grassland-bg: #f5f0d0;
+
+$color-wetland: #1a5276;
+$color-wetland-light: #2980b9;
+$color-wetland-bg: #d6eaf8;
+
+$color-sky: #87ceeb;
+$color-sky-dark: #5ba3c9;
+
+$color-earth: #8b6914;
+$color-earth-light: #c49a1a;
+$color-earth-bg: #fdf2d0;
+
+$color-bark: #5d4037;
+$color-bark-light: #795548;
+
+$color-cream: #faf8f0;
+$color-parchment: #f5f0e1;
+$color-white: #ffffff;
+
+$color-text: #2c2c2c;
+$color-text-light: #666666;
+$color-text-muted: #999999;
+
+$color-accent: #c0392b;
+$color-accent-light: #e74c3c;
+
+$color-success: #27ae60;
+$color-warning: #f39c12;
+$color-danger: #e74c3c;
+
+$color-border: #d4c9a8;
+$color-border-light: #e8e0cc;
+
+// Power type colors
+$color-power-brown: #8b6914;
+$color-power-pink: #d4658a;
+$color-power-white: #e0e0e0;
+$color-power-gameend: #6c3483;
+$color-power-none: #bbb;
+
+// Food colors
+$color-food-invertebrate: #e67e22;
+$color-food-seed: #d4ac0d;
+$color-food-fish: #3498db;
+$color-food-fruit: #8e44ad;
+$color-food-rodent: #7f8c8d;
+$color-food-wild: #2ecc71;
+
+// Spacing
+$space-xs: 4px;
+$space-sm: 8px;
+$space-md: 16px;
+$space-lg: 24px;
+$space-xl: 32px;
+$space-xxl: 48px;
+
+// Typography
+$font-primary: 'Georgia', 'Times New Roman', serif;
+$font-secondary: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+$font-mono: 'Consolas', 'Courier New', monospace;
+
+$font-size-xs: 10px;
+$font-size-sm: 12px;
+$font-size-md: 14px;
+$font-size-lg: 18px;
+$font-size-xl: 24px;
+$font-size-xxl: 32px;
+
+// Border radius
+$radius-sm: 4px;
+$radius-md: 8px;
+$radius-lg: 12px;
+$radius-round: 50%;
+
+// Shadows
+$shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12);
+$shadow-md: 0 2px 8px rgba(0, 0, 0, 0.15);
+$shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.2);
+
+// Transitions
+$transition-fast: 150ms ease;
+$transition-normal: 250ms ease;
+
+// Card dimensions
+$card-width: 180px;
+$card-height: 260px;
+$card-mini-width: 100px;
+$card-mini-height: 70px;
+
+// Board
+$slot-width: 110px;
+$slot-height: 80px;
+$board-gap: 4px;
