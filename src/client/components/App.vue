@@ -63,6 +63,12 @@ export default defineComponent({
       error: '',
     };
   },
+  async mounted() {
+    const gameIdFromUrl = this.getGameIdFromUrl();
+    this.gameId = gameIdFromUrl;
+    if (!this.gameId) return;
+    await this.refreshGameState();
+  },
   computed: {
     transitionPlayerName(): string {
       if (!this.gameState || !this.currentPlayerId) return '';
@@ -76,11 +82,52 @@ export default defineComponent({
     },
   },
   methods: {
+    getGameIdFromUrl(): GameId | null {
+      const url = new URL(window.location.href);
+      const queryGameId = url.searchParams.get('gameId');
+      if (queryGameId) {
+        return queryGameId as GameId;
+      }
+
+      const pathMatch = window.location.pathname.match(/^\/game\/([^/]+)$/);
+      if (pathMatch && pathMatch[1]) {
+        return decodeURIComponent(pathMatch[1]) as GameId;
+      }
+
+      return null;
+    },
+    setUrlGameId(gameId: GameId | null) {
+      const url = new URL(window.location.href);
+      if (gameId) {
+        url.pathname = '/';
+        url.searchParams.set('gameId', gameId);
+      } else {
+        url.pathname = '/';
+        url.searchParams.delete('gameId');
+      }
+      window.history.replaceState({}, '', url.toString());
+    },
+    persistSession() {
+      if (this.gameId) {
+        localStorage.setItem('wingspan_game_id', this.gameId);
+        this.setUrlGameId(this.gameId);
+      }
+    },
+    clearSession() {
+      localStorage.removeItem('wingspan_game_id');
+      this.setUrlGameId(null);
+    },
+
+    getInputPlayerId(state: GameViewModel): PlayerId {
+      return state.expectedInputPlayerId || state.currentPlayerId;
+    },
+
     async onGameStart(playerNames: string[]) {
       try {
         const result = await api.createGame(playerNames);
         this.gameId = result.gameId;
         this.playerIds = result.playerIds;
+        this.persistSession();
         await this.refreshGameState();
       } catch (err) {
         this.error = String(err);
@@ -91,18 +138,22 @@ export default defineComponent({
       if (!this.gameId) return;
       try {
         const state = await api.getGameState(this.gameId);
+        const nextInputPlayerId = this.getInputPlayerId(state);
         this.gameState = state;
-        this.currentPlayerId = state.currentPlayerId;
+        this.currentPlayerId = nextInputPlayerId;
+        this.persistSession();
 
         if (state.phase === Phase.GAME_END) {
+          this.clearSession();
           this.screen = 'gameover';
-        } else if (this.previousPlayerId && this.previousPlayerId !== state.currentPlayerId) {
-          // Different player's turn - show transition screen for hot-seat
+        } else if (this.previousPlayerId && this.previousPlayerId !== nextInputPlayerId) {
+          // Different player is expected to provide input - show hot-seat transition.
           this.screen = 'transition';
         } else {
           this.screen = 'game';
         }
       } catch (err) {
+        this.clearSession();
         this.error = String(err);
       }
     },
@@ -116,12 +167,13 @@ export default defineComponent({
       try {
         this.previousPlayerId = this.currentPlayerId;
         const state = await api.submitInput(this.currentPlayerId, response);
+        const nextInputPlayerId = this.getInputPlayerId(state);
         this.gameState = state;
-        this.currentPlayerId = state.currentPlayerId;
+        this.currentPlayerId = nextInputPlayerId;
 
         if (state.phase === Phase.GAME_END) {
           this.screen = 'gameover';
-        } else if (this.previousPlayerId !== state.currentPlayerId) {
+        } else if (this.previousPlayerId !== nextInputPlayerId) {
           this.screen = 'transition';
         }
         // Otherwise stay on game screen (same player still has input pending)

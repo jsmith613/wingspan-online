@@ -36,4 +36,11 @@ export abstract class DeferredAction {
    * Returns another PlayerInputModel if more input is needed, or undefined if done.
    */
   handleInput?(game: Game, response: unknown): PlayerInputModel | undefined;
+
+  /**
+   * Whether the player is locked into the current top-level action and may not cancel/back out.
+   */
+  isCancellationLocked(): boolean {
+    return false;
+  }
 }

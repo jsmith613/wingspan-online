@@ -27,6 +27,12 @@ interface RegisteredPower {
  */
 export class PowerEventBus {
   private listeners: Map<GameEvent, RegisteredPower[]> = new Map();
+  private triggeredThisTurn: Set<BirdCard> = new Set();
+
+  /** Reset once-between-turn tracking for a new player's turn. */
+  startNewTurn(): void {
+    this.triggeredThisTurn.clear();
+  }
 
   /** Register a bird's pink power for a game event. */
   register(event: GameEvent, bird: BirdCard, owner: Player): void {
@@ -52,9 +58,11 @@ export class PowerEventBus {
     if (!powers) return;
 
     for (const { bird, owner } of powers) {
+      if (this.triggeredThisTurn.has(bird)) continue;
       const triggered = bird.onTrigger(event, triggeringPlayer, owner, game);
       if (triggered) {
-        // The onTrigger method should push its own deferred actions
+        // The onTrigger method should push its own deferred actions.
+        this.triggeredThisTurn.add(bird);
       }
     }
   }
@@ -62,5 +70,6 @@ export class PowerEventBus {
   /** Clear all registered listeners. */
   clear(): void {
     this.listeners.clear();
+    this.triggeredThisTurn.clear();
   }
 }

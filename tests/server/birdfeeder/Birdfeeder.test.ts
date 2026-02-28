@@ -34,7 +34,7 @@ describe('Birdfeeder', () => {
     it('should reduce remaining count after taking', () => {
       const available = feeder.getAvailableFood();
       feeder.takeFood(available[0]);
-      // May have rerolled if conditions met, but count should be valid
+      // Feeder may reroll only when emptied
       expect(feeder.getRemainingCount()).toBeLessThanOrEqual(BIRDFEEDER_DICE_COUNT);
     });
 
@@ -58,6 +58,43 @@ describe('Birdfeeder', () => {
       }
       // After exhausting, feeder should have rerolled
       expect(feeder.getRemainingCount()).toBe(BIRDFEEDER_DICE_COUNT);
+    });
+
+    it('should report reroll allowed when all available dice show the same face', () => {
+      const sameFaceFeeder = Birdfeeder.deserialize(
+        {
+          dice: [
+            { foods: [FoodType.SEED], taken: false },
+            { foods: [FoodType.SEED], taken: false },
+            { foods: [FoodType.SEED], taken: false },
+            { foods: [FoodType.SEED], taken: false },
+            { foods: [FoodType.SEED], taken: false },
+          ],
+        },
+        mulberry32(7)
+      );
+
+      expect(sameFaceFeeder.canRerollByRule()).toBe(true);
+    });
+
+    it('should not auto-reroll when remaining dice are all the same', () => {
+      const sameFaceFeeder = Birdfeeder.deserialize(
+        {
+          dice: [
+            { foods: [FoodType.SEED], taken: false },
+            { foods: [FoodType.SEED], taken: false },
+            { foods: [FoodType.SEED], taken: false },
+            { foods: [FoodType.SEED], taken: false },
+            { foods: [FoodType.SEED], taken: false },
+          ],
+        },
+        mulberry32(11)
+      );
+
+      sameFaceFeeder.takeFood(FoodType.SEED);
+
+      expect(sameFaceFeeder.getRemainingCount()).toBe(4);
+      expect(sameFaceFeeder.canRerollByRule()).toBe(true);
     });
   });
 

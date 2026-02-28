@@ -73,28 +73,28 @@ export class Birdfeeder {
       return null;
     }
     targetDie.taken = true;
-    this.checkReroll();
+    this.rerollIfEmpty();
     return food;
   }
 
-  /**
-   * Check if a reroll is needed:
-   * - All dice taken (feeder empty)
-   * - All remaining dice show identical faces
-   */
-  private checkReroll(): void {
+  /** Immediately reroll when all dice are taken. */
+  private rerollIfEmpty(): void {
     const available = this.dice.filter(d => !d.taken);
     if (available.length === 0) {
-      this.rollAll();
-      return;
-    }
-    if (this.allSameFace(available)) {
       this.rollAll();
     }
   }
 
+  /**
+   * Whether a manual reroll is allowed by the base Wingspan rule:
+   * all currently available dice show the same face.
+   */
+  canRerollByRule(): boolean {
+    return this.allSameFace(this.getAvailableDice());
+  }
+
   /** Check if all dice show the same face. */
-  private allSameFace(dice: RolledDie[]): boolean {
+  private allSameFace(dice: ReadonlyArray<RolledDie>): boolean {
     if (dice.length <= 1) return false;
     const first = dice[0].face.foods;
     return dice.every(d =>

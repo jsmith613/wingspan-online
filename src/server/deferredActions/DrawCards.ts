@@ -3,6 +3,9 @@ import type { Player } from '../Player';
 import type { Game } from '../Game';
 import { PlayerInputModel } from '../../common/input/PlayerInputModel';
 import { InputType } from '../../common/input/InputType';
+import { createBirdCard } from '../cards/createCard';
+import { HabitatType } from '../../common/game/HabitatType';
+import { FoodType } from '../../common/game/FoodType';
 
 /**
  * Draw bird cards. Player may choose from face-up tray or draw from deck.
@@ -62,9 +65,31 @@ export class DrawCards extends DeferredAction {
     }
     options.push('DRAW_FROM_DECK');
 
+    const cardDetails = trayCards.map(name => {
+      const card = createBirdCard(name);
+      if (card) return card.toClientCard();
+      return {
+        name,
+        commonName: String(name).replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+        scientificName: '',
+        habitats: Object.values(HabitatType),
+        foodCost: [] as FoodType[],
+        nestType: 'BOWL' as any,
+        eggCapacity: 0,
+        wingspan: 0,
+        points: 0,
+        powerType: 'NONE' as any,
+        powerText: '',
+        eggs: 0,
+        cachedFood: 0,
+        tuckedCards: 0,
+      };
+    });
+
     return {
       type: InputType.SELECT_OPTION,
       options,
+      cardDetails,
       message: `Draw a card (${this.drawn + 1} of ${this.count}). Choose a face-up card or draw from the deck.`,
     };
   }

@@ -4,6 +4,7 @@ import type { Game } from '../Game';
 import { PlayerInputModel } from '../../common/input/PlayerInputModel';
 import { InputType } from '../../common/input/InputType';
 import { FoodType } from '../../common/game/FoodType';
+import { GameEvent } from '../powers/PowerEventBus';
 
 /**
  * Gain food from the birdfeeder.
@@ -12,6 +13,7 @@ import { FoodType } from '../../common/game/FoodType';
 export class GainFood extends DeferredAction {
   private readonly count: number;
   private gained: number = 0;
+  private rerolled: boolean = false;
 
   constructor(player: Player, count: number) {
     super(player, ActionPriority.GAIN);
@@ -23,8 +25,18 @@ export class GainFood extends DeferredAction {
   }
 
   handleInput(game: Game, response: unknown): PlayerInputModel | undefined {
-    // Client sends { selectedFood: [FoodType] } or a raw FoodType
     const input = response as any;
+
+    // Optional reroll action (allowed only while taking food and only if rule permits).
+    if (input.rerollBirdfeeder === true) {
+      if (game.birdfeeder.canRerollByRule()) {
+        this.rerolled = true;
+        game.birdfeeder.rollAll();
+      }
+      return this.askForFood(game);
+    }
+
+    // Client sends { selectedFood: [FoodType] } or a raw FoodType
     const selectedFood: FoodType = Array.isArray(input.selectedFood)
       ? input.selectedFood[0]
       : (input.selectedFood || input);
@@ -32,6 +44,7 @@ export class GainFood extends DeferredAction {
     if (taken !== null) {
       this.player.addFood(taken);
       this.gained++;
+      game.fireGameEvent(GameEvent.FOOD_GAINED, this.player);
     }
     if (this.gained >= this.count) {
       return undefined;
@@ -47,8 +60,14 @@ export class GainFood extends DeferredAction {
     return {
       type: InputType.SELECT_FOOD,
       availableDice: availableDice.map(d => ({ foods: [...d.face.foods] })),
+      canReroll: game.birdfeeder.canRerollByRule(),
+      lockBack: this.rerolled,
       min: 1,
       max: 1,
     };
+  }
+
+  isCancellationLocked(): boolean {
+    return this.rerolled;
   }
 }

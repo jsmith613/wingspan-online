@@ -28,6 +28,7 @@ export interface GameViewModel {
   readonly phase: Phase;
   readonly round: number;
   readonly currentPlayerId: PlayerId;
+  readonly expectedInputPlayerId: PlayerId;
   readonly players: ReadonlyArray<PlayerViewModel>;
   readonly birdfeeder: BirdfeederView;
   readonly birdTray: BirdTrayView;

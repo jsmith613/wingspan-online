@@ -16,6 +16,7 @@
     <SelectFood
       v-else-if="input.type === 'SELECT_FOOD'"
       :available-dice="input.availableDice"
+      :can-reroll="input.canReroll || false"
       :min="input.min"
       :max="input.max"
       @submit="(v) => $emit('submit', v)"
@@ -56,6 +57,7 @@
       v-else-if="input.type === 'SELECT_OPTION'"
       :options="input.options"
       :message="input.message"
+      :card-details="input.cardDetails || []"
       @submit="(v) => $emit('submit', v)"
     />
 
@@ -146,6 +148,9 @@ export default defineComponent({
   },
   computed: {
     showBackButton(): boolean {
+      if (this.input.type === 'SELECT_FOOD' && (this.input as any).lockBack) {
+        return false;
+      }
       const noBack = ['SELECT_ACTION', 'SELECT_BIRD_TO_KEEP', 'SELECT_STARTING_FOOD', 'SELECT_BONUS_CARD'];
       return !noBack.includes(this.input.type);
     },

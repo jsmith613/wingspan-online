@@ -10,6 +10,11 @@
     />
     <div class="input-actions">
       <button
+        v-if="canReroll"
+        class="btn-secondary"
+        @click="reroll"
+      >Reroll Birdfeeder</button>
+      <button
         class="btn-primary"
         :disabled="selections.length < min"
         @click="confirm"
@@ -32,6 +37,7 @@ export default defineComponent({
   components: { Birdfeeder },
   props: {
     availableDice: { type: Array as PropType<DieFace[]>, required: true },
+    canReroll: { type: Boolean, default: false },
     min: { type: Number, required: true },
     max: { type: Number, required: true },
   },
@@ -63,6 +69,10 @@ export default defineComponent({
       const foods = this.selections.map(s => s.food);
       this.$emit('submit', { type: 'SELECT_FOOD', selectedFood: foods });
     },
+    reroll() {
+      this.selections = [];
+      this.$emit('submit', { type: 'SELECT_FOOD', rerollBirdfeeder: true });
+    },
   },
 });
 </script>
@@ -79,5 +89,8 @@ export default defineComponent({
 .input-actions {
   margin-top: $space-md;
   text-align: center;
+  display: flex;
+  gap: $space-sm;
+  justify-content: center;
 }
 </style>

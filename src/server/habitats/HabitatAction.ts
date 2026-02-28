@@ -6,6 +6,10 @@ import { DeferredAction } from '../deferredActions/DeferredAction';
 import { GainFood } from '../deferredActions/GainFood';
 import { LayEggs } from '../deferredActions/LayEggs';
 import { DrawCards } from '../deferredActions/DrawCards';
+import { ActivateBrownPower } from '../deferredActions/ActivateBrownPower';
+import { createBirdCard } from '../cards/createCard';
+import { BirdCardName } from '../../common/cards/BirdCardName';
+import { PowerType } from '../../common/game/PowerType';
 
 /**
  * Maps habitat types to their corresponding actions.
@@ -84,7 +88,16 @@ export function executeHabitatAction(
   const baseAction = createHabitatAction(player, habitat, game);
   game.deferredActions.push(baseAction);
 
-  // Brown power activations would be added here by the card system (Phase 3).
-  // Birds in the habitat are activated right-to-left.
-  // For now, this is a hook point for when cards are implemented.
+  // Queue brown powers right-to-left (rightmost slot first).
+  // These resolve after the base action and can enqueue more deferred actions.
+  const slots = player.board.getHabitat(habitat);
+  for (let i = slots.length - 1; i >= 0; i--) {
+    const placed = slots[i];
+    if (!placed) continue;
+
+    const card = createBirdCard(placed.name as BirdCardName);
+    if (!card || card.powerType !== PowerType.BROWN) continue;
+
+    game.deferredActions.push(new ActivateBrownPower(player, card));
+  }
 }

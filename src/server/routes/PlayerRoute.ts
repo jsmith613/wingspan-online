@@ -35,9 +35,10 @@ export function createPlayerRouter(db: IDatabase): Router {
         return;
       }
 
-      // Only return waitingFor if it's this player's turn
-      if (game.currentPlayer.id === playerId) {
-        const vm = game.toViewModel();
+      const vm = game.toViewModel();
+      // Return waitingFor only to the player whose input is currently expected.
+      const expectedPlayerId = game.getExpectedInputPlayerId();
+      if (vm.waitingFor && expectedPlayerId === playerId) {
         res.json(vm.waitingFor);
       } else {
         res.json(null);
@@ -63,11 +64,6 @@ export function createPlayerRouter(db: IDatabase): Router {
         return;
       }
 
-      if (game.currentPlayer.id !== playerId) {
-        res.status(400).json({ error: 'Not your turn' });
-        return;
-      }
-
       const input = req.body;
       const vm = game.toViewModel();
       const waitingFor = vm.waitingFor;
@@ -77,8 +73,18 @@ export function createPlayerRouter(db: IDatabase): Router {
         return;
       }
 
+      const expectedPlayerId = game.getExpectedInputPlayerId();
+      if (expectedPlayerId !== playerId) {
+        res.status(400).json({ error: 'Not waiting for this player input' });
+        return;
+      }
+
       // Handle cancel/back
       if (input.cancel) {
+        if (!game.canCancelCurrentInput()) {
+          res.status(400).json({ error: 'Cannot cancel after rerolling birdfeeder during Gain Food.' });
+          return;
+        }
         if (input.cancelType === 'habitat') {
           game.handleCancelHabitat(playerId);
         } else {
@@ -90,7 +96,7 @@ export function createPlayerRouter(db: IDatabase): Router {
       }
 
       // Route input based on the current waitingFor type
-      let nextInput = routeInput(game, playerId, waitingFor.type, input);
+      routeInput(game, playerId, waitingFor.type, input);
 
       // Save game state after processing
       saveGame(game, db);

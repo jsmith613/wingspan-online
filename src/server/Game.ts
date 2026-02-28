@@ -21,6 +21,8 @@ import { executeHabitatAction } from './habitats/HabitatAction';
 import { SerializedGame } from './SerializedGame';
 import { mulberry32, shuffle } from '../common/prng';
 import { createBirdCard } from './cards/createCard';
+import { PowerEventBus, GameEvent } from './powers/PowerEventBus';
+import { PowerType } from '../common/game/PowerType';
 
 export class Game {
   public readonly id: GameId;
@@ -30,6 +32,7 @@ export class Game {
   public players: Player[];
   public birdfeeder: Birdfeeder;
   public deferredActions: DeferredActionsQueue;
+  public powerEventBus: PowerEventBus;
 
   private seed: number;
   private rng: () => number;
@@ -49,6 +52,7 @@ export class Game {
     this.round = 0;
     this.currentPlayerIndex = 0;
     this.deferredActions = new DeferredActionsQueue();
+    this.powerEventBus = new PowerEventBus();
 
     // Create players
     this.players = playerNames.map((name, i) => {
@@ -283,15 +287,19 @@ export class Game {
 
     // Start first player's turn
     this.currentPlayerIndex = 0;
-    return this.startPlayerTurn();
+    return this.startPlayerTurn(true);
   }
 
   /** Start the current player's turn. */
-  startPlayerTurn(): PlayerInputModel | undefined {
+  startPlayerTurn(isNewTurn: boolean = false): PlayerInputModel | undefined {
     const player = this.currentPlayer;
 
     if (player.actionCubes <= 0) {
       return this.advanceTurn();
+    }
+
+    if (isNewTurn) {
+      this.powerEventBus.startNewTurn();
     }
 
     this.phase = Phase.PLAYER_TURN;
@@ -397,6 +405,24 @@ export class Game {
 
     // Return to action selection
     return this.startPlayerTurn();
+  }
+
+  /**
+   * Whether the current pending input can be canceled/backed out.
+   */
+  canCancelCurrentInput(): boolean {
+    const currentDeferred = this.deferredActions.getCurrentAction();
+    if (!currentDeferred) return true;
+    return !currentDeferred.isCancellationLocked();
+  }
+
+  /** Which player's input is currently expected. */
+  getExpectedInputPlayerId(): PlayerId {
+    const currentDeferred = this.deferredActions.getCurrentAction();
+    if (currentDeferred) {
+      return currentDeferred.player.id;
+    }
+    return this.currentPlayer.id;
   }
 
   /**
@@ -511,6 +537,26 @@ export class Game {
       tuckedCards: 0,
     });
 
+    // Register pink powers for future event triggers.
+    if (card && card.powerType === PowerType.PINK) {
+      this.registerPinkPower(card, player);
+    }
+
+    // Resolve white "when played" powers immediately after placement.
+    if (card) {
+      card.onPlay(player, this);
+    }
+
+    // Trigger "another player plays a bird" pink powers.
+    this.fireGameEvent(GameEvent.BIRD_PLAYED, player);
+
+    // Pink powers can require input from non-active players before the turn advances.
+    const betweenTurnsInput = this.deferredActions.runUntilInput(this);
+    if (betweenTurnsInput) {
+      this.waitingFor = betweenTurnsInput;
+      return betweenTurnsInput;
+    }
+
     return this.finishTurn();
   }
 
@@ -554,6 +600,14 @@ export class Game {
    * Handle player input for the current deferred action.
    */
   handleDeferredInput(playerId: PlayerId, response: unknown): PlayerInputModel | undefined {
+    const currentDeferred = this.deferredActions.getCurrentAction();
+    if (!currentDeferred) {
+      throw new Error('No deferred action waiting for input');
+    }
+    if (currentDeferred.player.id !== playerId) {
+      throw new Error('Input submitted by wrong player for current deferred action');
+    }
+
     const result = this.deferredActions.handleInput(this, response);
     if (result) {
       this.waitingFor = result;
@@ -601,7 +655,7 @@ export class Game {
       return this.endRound();
     }
 
-    return this.startPlayerTurn();
+    return this.startPlayerTurn(true);
   }
 
   /** End the current round. Score round goals, then start next round. */
@@ -618,6 +672,31 @@ export class Game {
     return undefined;
   }
 
+  /** Fire a game event to evaluate pink powers. */
+  fireGameEvent(event: GameEvent, triggeringPlayer: Player): void {
+    this.powerEventBus.fireEvent(event, triggeringPlayer, this);
+  }
+
+  /** Register this pink card for all events it listens to. */
+  private registerPinkPower(card: import('./cards/BirdCard').BirdCard, owner: Player): void {
+    for (const event of card.getTriggeredEvents()) {
+      this.powerEventBus.register(event, card, owner);
+    }
+  }
+
+  /** Rebuild all pink-power listeners from birds currently on player boards. */
+  rebuildPowerListeners(): void {
+    this.powerEventBus.clear();
+    for (const player of this.players) {
+      for (const placed of player.board.getAllBirds()) {
+        const card = createBirdCard(placed.name as BirdCardName);
+        if (card && card.powerType === PowerType.PINK) {
+          this.registerPinkPower(card, player);
+        }
+      }
+    }
+  }
+
   // =========================================================================
   // View Model
   // =========================================================================
@@ -629,6 +708,7 @@ export class Game {
       phase: this.phase,
       round: this.round,
       currentPlayerId: this.currentPlayer.id,
+      expectedInputPlayerId: this.getExpectedInputPlayerId(),
       players: this.players.map(p => p.toViewModel()),
       birdfeeder: {
         dice: this.birdfeeder.getAvailableDice().map(d => ({ foods: [...d.face.foods] })),
@@ -672,6 +752,7 @@ export class Game {
     game.discardPile = [...data.discardPile];
     game.birdTray = [...data.birdTray];
     game.bonusDeck = [...data.bonusDeck];
+    game.rebuildPowerListeners();
     return game;
   }
 }

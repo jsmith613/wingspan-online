@@ -67,13 +67,17 @@ export function createApiRouter(db: IDatabase): Router {
 /** Helper: get a Game from cache or DB */
 export function getGame(gameId: GameId, db: IDatabase): Game | undefined {
   let game = activeGames.get(gameId);
-  if (game) return game;
+  if (game) {
+    registerPlayerGameMapping(game.players.map(p => p.id), gameId);
+    return game;
+  }
 
   const data = db.loadGame(gameId);
   if (!data) return undefined;
 
   game = Game.deserialize(data);
   activeGames.set(gameId, game);
+  registerPlayerGameMapping(game.players.map(p => p.id), gameId);
   return game;
 }
 

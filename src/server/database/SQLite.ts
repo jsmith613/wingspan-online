@@ -1,14 +1,31 @@
 import initSqlJs, { Database as SqlJsDatabase } from 'sql.js';
+import fs from 'fs';
+import path from 'path';
 import { GameId } from '../../common/Types';
 import { SerializedGame } from '../SerializedGame';
 import { IDatabase } from './IDatabase';
 
 export class SQLiteDatabase implements IDatabase {
   private db: SqlJsDatabase | null = null;
+  private readonly dbPath: string;
+
+  constructor(dbPath: string = path.resolve(process.cwd(), 'data', 'wingspan.sqlite')) {
+    this.dbPath = dbPath;
+  }
 
   async initializeAsync(): Promise<void> {
     const SQL = await initSqlJs();
-    this.db = new SQL.Database();
+    const dir = path.dirname(this.dbPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
+    if (fs.existsSync(this.dbPath)) {
+      const file = fs.readFileSync(this.dbPath);
+      this.db = new SQL.Database(new Uint8Array(file));
+    } else {
+      this.db = new SQL.Database();
+    }
     this.initialize();
   }
 
@@ -21,6 +38,7 @@ export class SQLiteDatabase implements IDatabase {
         updated_at INTEGER NOT NULL
       )
     `);
+    this.persist();
   }
 
   saveGame(game: SerializedGame): void {
@@ -34,6 +52,7 @@ export class SQLiteDatabase implements IDatabase {
       ':updated_at': Date.now(),
     });
     stmt.free();
+    this.persist();
   }
 
   loadGame(id: GameId): SerializedGame | undefined {
@@ -54,5 +73,12 @@ export class SQLiteDatabase implements IDatabase {
     const stmt = this.db.prepare('DELETE FROM games WHERE id = :id');
     stmt.run({ ':id': id });
     stmt.free();
+    this.persist();
+  }
+
+  private persist(): void {
+    if (!this.db) return;
+    const bytes = this.db.export();
+    fs.writeFileSync(this.dbPath, Buffer.from(bytes));
   }
 }

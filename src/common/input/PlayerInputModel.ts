@@ -27,6 +27,8 @@ export interface SelectFoodDie {
 export interface SelectFoodInput {
   readonly type: InputType.SELECT_FOOD;
   readonly availableDice: ReadonlyArray<SelectFoodDie>;
+  readonly canReroll?: boolean;
+  readonly lockBack?: boolean;
   readonly min: number;
   readonly max: number;
 }
@@ -53,6 +55,7 @@ export interface SelectOptionInput {
   readonly type: InputType.SELECT_OPTION;
   readonly options: ReadonlyArray<string>;
   readonly message: string;
+  readonly cardDetails?: ReadonlyArray<ClientBirdCard>;
 }
 
 export interface OrOptionsInput {
