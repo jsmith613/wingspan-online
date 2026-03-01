@@ -57,8 +57,9 @@ export class DeferredActionsQueue {
       return result;
     }
 
-    // Action completed without needing input (e.g. ActivateBrownPower)
-    this._hasCompletedAny = true;
+    // Action completed without needing input (e.g. ActivateBrownPower, skipped OptionalTrade).
+    // Don't set _hasCompletedAny here — only user-interactive completions (handleInput)
+    // should lock cancellation so that silent no-ops don't block the back button.
     this.currentAction = null;
     return undefined;
   }
