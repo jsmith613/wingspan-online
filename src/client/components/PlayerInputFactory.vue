@@ -16,6 +16,8 @@
     <SelectFood
       v-else-if="input.type === 'SELECT_FOOD'"
       :available-dice="input.availableDice"
+      :message="input.message || ''"
+      :required-cost="input.requiredCost || []"
       :can-reroll="input.canReroll || false"
       :min="input.min"
       :max="input.max"
@@ -139,6 +141,7 @@ export default defineComponent({
   components: { SelectFood, SelectBird, SelectHabitatSlot, SelectEggLocation, SelectCards, SelectOption, SelectStartingFood },
   props: {
     input: { type: Object as PropType<PlayerInputModel>, required: true },
+    canCancel: { type: Boolean, default: true },
   },
   emits: ['submit'],
   data() {
@@ -148,6 +151,9 @@ export default defineComponent({
   },
   computed: {
     showBackButton(): boolean {
+      if (!this.canCancel) {
+        return false;
+      }
       if ((this.input as any).lockBack) {
         return false;
       }

@@ -6,5 +6,6 @@ export { DrawCards } from './DrawCards';
 export { TuckCard } from './TuckCard';
 export { CacheFood } from './CacheFood';
 export { PayFoodCost } from './PayFoodCost';
+export { PayBirdCost } from './PayBirdCost';
 export { PayEggCost } from './PayEggCost';
 export { PlayAdditionalBird } from './PlayAdditionalBird';

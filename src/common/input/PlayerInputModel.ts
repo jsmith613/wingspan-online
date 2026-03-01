@@ -28,6 +28,8 @@ export interface SelectFoodDie {
 export interface SelectFoodInput {
   readonly type: InputType.SELECT_FOOD;
   readonly availableDice: ReadonlyArray<SelectFoodDie>;
+  readonly message?: string;
+  readonly requiredCost?: ReadonlyArray<FoodType>;
   readonly canReroll?: boolean;
   readonly lockBack?: boolean;
   readonly min: number;

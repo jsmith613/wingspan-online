@@ -23,6 +23,8 @@ import { mulberry32, shuffle } from '../common/prng';
 import { createBirdCard } from './cards/createCard';
 import { PowerEventBus, GameEvent } from './powers/PowerEventBus';
 import { PowerType } from '../common/game/PowerType';
+import { GameOptions, DEFAULT_GAME_OPTIONS } from '../common/models/GameOptions';
+import { PayBirdCost, canAffordBirdFoodCost } from './deferredActions/PayBirdCost';
 
 export class Game {
   public readonly id: GameId;
@@ -31,6 +33,7 @@ export class Game {
   public currentPlayerIndex: number;
   public players: Player[];
   public birdfeeder: Birdfeeder;
+  public options: GameOptions;
   public deferredActions: DeferredActionsQueue;
   public powerEventBus: PowerEventBus;
 
@@ -42,15 +45,21 @@ export class Game {
   private bonusDeck: BonusCardName[];
 
   private waitingFor: PlayerInputModel | null = null;
-  private pendingBirdPlacement: { birdName: BirdCardName; card: import('./cards/BirdCard').BirdCard | null } | null = null;
+  private pendingBirdPlacement: {
+    playerId: PlayerId;
+    birdName: BirdCardName;
+    card: import('./cards/BirdCard').BirdCard | null;
+    habitat?: HabitatType;
+  } | null = null;
 
-  constructor(id: GameId, playerNames: string[], seed?: number) {
+  constructor(id: GameId, playerNames: string[], seed?: number, options?: GameOptions) {
     this.id = id;
     this.seed = seed ?? Date.now();
     this.rng = mulberry32(this.seed);
     this.phase = Phase.SETUP;
     this.round = 0;
     this.currentPlayerIndex = 0;
+    this.options = options ?? DEFAULT_GAME_OPTIONS;
     this.deferredActions = new DeferredActionsQueue();
     this.powerEventBus = new PowerEventBus();
 
@@ -389,7 +398,7 @@ export class Game {
     const unaffordableBirds = player.hand.filter(name => {
       const card = createBirdCard(name);
       if (!card) return false;
-      return !player.canAffordFoodCost({ foods: [...card.foodCost], totalRequired: card.foodCost.length, wildCount: 0 });
+      return !canAffordBirdFoodCost(player.food, card.foodCost);
     });
 
     this.waitingFor = {
@@ -426,6 +435,10 @@ export class Game {
    * Whether the current pending input can be canceled/backed out.
    */
   canCancelCurrentInput(): boolean {
+    // If any completed actions exist in the queue's history, we can't go back.
+    if (this.deferredActions.hasCompletedAny) {
+      return false;
+    }
     const currentDeferred = this.deferredActions.getCurrentAction();
     if (!currentDeferred) return true;
     return !currentDeferred.isCancellationLocked();
@@ -457,13 +470,17 @@ export class Game {
       ? card.habitats.filter(h => player.board.hasSpace(h))
       : Object.values(HabitatType).filter(h => player.board.hasSpace(h));
 
+    if (card && !canAffordBirdFoodCost(player.food, card.foodCost)) {
+      return this.handlePlayBird(player);
+    }
+
     if (validHabitats.length === 0) {
       // No space — shouldn't happen, but advance turn
       return this.finishTurn();
     }
 
     // Always ask which habitat (so user can back out)
-    this.pendingBirdPlacement = { birdName, card };
+    this.pendingBirdPlacement = { playerId, birdName, card };
     this.waitingFor = {
       type: InputType.SELECT_HABITAT_SLOT,
       availableHabitats: validHabitats,
@@ -479,10 +496,9 @@ export class Game {
     if (!player) throw new Error(`Player ${playerId} not found`);
 
     if (!this.pendingBirdPlacement) throw new Error('No bird pending placement');
-    const { birdName, card } = this.pendingBirdPlacement;
-    this.pendingBirdPlacement = null;
-
-    return this.placeBirdInHabitat(player, birdName, habitat, card);
+    this.pendingBirdPlacement.playerId = playerId;
+    this.pendingBirdPlacement.habitat = habitat;
+    return this.startPendingBirdPayment(player);
   }
 
   /**
@@ -494,10 +510,11 @@ export class Game {
     if (!player) throw new Error(`Player ${playerId} not found`);
 
     if (!this.pendingBirdPlacement) {
-      // No pending placement — fall back to full cancel
       return this.handleCancelAction(playerId);
     }
-
+    if (this.pendingBirdPlacement.habitat !== undefined) {
+      return this.handleCancelAction(playerId);
+    }
     this.pendingBirdPlacement = null;
 
     // Card never left hand and food was never paid, so nothing to refund.
@@ -506,14 +523,43 @@ export class Game {
     return this.handlePlayBird(player);
   }
 
-  /** Place a bird on the board and finish the action. */
-  private placeBirdInHabitat(
-    player: Player,
-    birdName: BirdCardName,
-    habitat: HabitatType,
-    card: import('./cards/BirdCard').BirdCard | null
-  ): PlayerInputModel | undefined {
-    this.playBirdFromHand(player, birdName, habitat, card);
+  /** Begin interactive payment for a pending bird placement. */
+  private startPendingBirdPayment(player: Player): PlayerInputModel | undefined {
+    const pending = this.pendingBirdPlacement;
+    if (!pending || pending.habitat === undefined) {
+      return this.startPlayerTurn();
+    }
+
+    const cost = pending.card?.foodCost ?? [];
+    if (cost.length === 0) {
+      return this.completePendingBirdPlacement();
+    }
+
+    this.deferredActions.push(new PayBirdCost(player, cost));
+    const input = this.deferredActions.runUntilInput(this);
+    if (input) {
+      this.waitingFor = input;
+      return input;
+    }
+
+    return this.completePendingBirdPlacement();
+  }
+
+  /** Complete pending bird placement after cost payment resolves. */
+  private completePendingBirdPlacement(): PlayerInputModel | undefined {
+    const pending = this.pendingBirdPlacement;
+    if (!pending || pending.habitat === undefined) {
+      return this.finishTurn();
+    }
+
+    const player = this.getPlayer(pending.playerId);
+    if (!player) {
+      this.pendingBirdPlacement = null;
+      return this.finishTurn();
+    }
+
+    this.pendingBirdPlacement = null;
+    this.playBirdFromHand(player, pending.birdName, pending.habitat, pending.card);
 
     // Pink powers can require input from non-active players before the turn advances.
     const betweenTurnsInput = this.deferredActions.runUntilInput(this);
@@ -526,7 +572,26 @@ export class Game {
   }
 
   /**
-   * Play a bird from hand into a habitat, paying normal food + egg costs and triggering powers/events.
+   * Legacy helper retained for tests/scenarios that place birds directly.
+   * This bypasses interactive bird food payment.
+   */
+  private placeBirdInHabitat(
+    player: Player,
+    birdName: BirdCardName,
+    habitat: HabitatType,
+    card: import('./cards/BirdCard').BirdCard | null
+  ): PlayerInputModel | undefined {
+    this.playBirdFromHand(player, birdName, habitat, card);
+    const betweenTurnsInput = this.deferredActions.runUntilInput(this);
+    if (betweenTurnsInput) {
+      this.waitingFor = betweenTurnsInput;
+      return betweenTurnsInput;
+    }
+    return this.finishTurn();
+  }
+
+  /**
+   * Play a bird from hand into a habitat, paying egg costs and triggering powers/events.
    * This is shared by normal PLAY_BIRD and "play an additional bird" white powers.
    */
   playBirdFromHand(
@@ -539,20 +604,6 @@ export class Game {
 
     // Remove card from hand
     player.removeCardFromHand(birdName);
-
-    // Pay food cost
-    if (card) {
-      for (const food of card.foodCost) {
-        if (food === FoodType.WILD) {
-          // Remove any food
-          if (player.food.length > 0) {
-            player.food.splice(0, 1);
-          }
-        } else {
-          player.removeFood(food);
-        }
-      }
-    }
 
     // Pay egg cost for the column
     const eggCost = player.getEggCostForHabitat(habitat);
@@ -652,6 +703,10 @@ export class Game {
     }
 
     // All deferred actions done — advance the turn
+    if (this.pendingBirdPlacement?.habitat !== undefined) {
+      this.waitingFor = null;
+      return this.completePendingBirdPlacement();
+    }
     this.waitingFor = null;
     return this.finishTurn();
   }
@@ -748,6 +803,8 @@ export class Game {
       },
       roundGoals: [], // Will be populated by goal system
       waitingFor: this.waitingFor,
+      canCancel: this.canCancelCurrentInput(),
+      options: this.options,
     };
   }
 
@@ -768,11 +825,12 @@ export class Game {
       discardPile: [...this.discardPile],
       birdTray: [...this.birdTray],
       bonusDeck: [...this.bonusDeck],
+      options: this.options,
     };
   }
 
   static deserialize(data: SerializedGame): Game {
-    const game = new Game(data.id, [], data.seed);
+    const game = new Game(data.id, [], data.seed, data.options ?? DEFAULT_GAME_OPTIONS);
     game.phase = data.phase;
     game.round = data.round;
     game.currentPlayerIndex = data.currentPlayerIndex;
@@ -809,3 +867,7 @@ export class Game {
     // GAME_END / other phases: waitingFor stays null
   }
 }
+
+
+
+

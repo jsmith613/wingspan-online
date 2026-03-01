@@ -7,6 +7,7 @@ import { BirdCardName } from '../../common/cards/BirdCardName';
 import { HabitatType } from '../../common/game/HabitatType';
 import { createBirdCard } from '../cards/createCard';
 import { FoodType } from '../../common/game/FoodType';
+import { PayBirdCost, canAffordBirdFoodCost } from './PayBirdCost';
 
 /**
  * White power helper: play one additional bird in restricted habitat(s), paying normal costs.
@@ -14,6 +15,9 @@ import { FoodType } from '../../common/game/FoodType';
 export class PlayAdditionalBird extends DeferredAction {
   private readonly allowedHabitats: ReadonlyArray<HabitatType>;
   private selectedBird: BirdCardName | null = null;
+  private selectedHabitat: HabitatType | null = null;
+  private selectedCard: import('../cards/BirdCard').BirdCard | null = null;
+  private paymentAction: PayBirdCost | null = null;
 
   constructor(player: Player, allowedHabitats: ReadonlyArray<HabitatType>) {
     super(player, ActionPriority.DEFAULT);
@@ -27,6 +31,17 @@ export class PlayAdditionalBird extends DeferredAction {
   handleInput(game: Game, response: unknown): PlayerInputModel | undefined {
     const input = response as any;
 
+    if (this.paymentAction) {
+      const next = this.paymentAction.handleInput?.(game, response);
+      if (next) return next;
+
+      if (this.selectedBird && this.selectedHabitat && this.selectedCard) {
+        game.playBirdFromHand(this.player, this.selectedBird, this.selectedHabitat, this.selectedCard);
+      }
+      this.resetSelection();
+      return undefined;
+    }
+
     if (this.selectedBird === null) {
       const selectedBird = ((input.selectedBirds || [])[0] || input.selectedBird) as BirdCardName | undefined;
       if (!selectedBird) {
@@ -39,16 +54,15 @@ export class PlayAdditionalBird extends DeferredAction {
       }
 
       this.selectedBird = selectedBird;
+      this.selectedCard = card;
       const availableHabitats = this.getAllowedPlayableHabitats(card.habitats);
       if (availableHabitats.length === 0) {
-        this.selectedBird = null;
+        this.resetSelection();
         return this.askForBird();
       }
 
       if (availableHabitats.length === 1) {
-        game.playBirdFromHand(this.player, selectedBird, availableHabitats[0], card);
-        this.selectedBird = null;
-        return undefined;
+        return this.beginBirdPayment(game, selectedBird, availableHabitats[0], card);
       }
 
       return {
@@ -59,9 +73,9 @@ export class PlayAdditionalBird extends DeferredAction {
     }
 
     const selectedHabitat = (input.selectedHabitat || input.habitat) as HabitatType | undefined;
-    const card = createBirdCard(this.selectedBird);
+    const card = this.selectedCard ?? createBirdCard(this.selectedBird);
     if (!card) {
-      this.selectedBird = null;
+      this.resetSelection();
       return this.askForBird();
     }
 
@@ -74,9 +88,7 @@ export class PlayAdditionalBird extends DeferredAction {
       };
     }
 
-    game.playBirdFromHand(this.player, this.selectedBird, selectedHabitat, card);
-    this.selectedBird = null;
-    return undefined;
+    return this.beginBirdPayment(game, this.selectedBird, selectedHabitat, card);
   }
 
   /**
@@ -127,11 +139,42 @@ export class PlayAdditionalBird extends DeferredAction {
     const card = createBirdCard(name);
     if (!card) return false;
 
-    const foodCost = { foods: [...card.foodCost], totalRequired: card.foodCost.length, wildCount: 0 };
-    if (!this.player.canAffordFoodCost(foodCost)) return false;
+    if (!canAffordBirdFoodCost(this.player.food, card.foodCost)) return false;
 
     const playableHabitats = this.getAllowedPlayableHabitats(card.habitats);
     return playableHabitats.some(h => this.player.canAffordEggCost(this.player.getEggCostForHabitat(h)));
+  }
+
+  private beginBirdPayment(
+    game: Game,
+    birdName: BirdCardName,
+    habitat: HabitatType,
+    card: import('../cards/BirdCard').BirdCard,
+  ): PlayerInputModel | undefined {
+    this.selectedBird = birdName;
+    this.selectedHabitat = habitat;
+    this.selectedCard = card;
+
+    if (card.foodCost.length === 0) {
+      game.playBirdFromHand(this.player, birdName, habitat, card);
+      this.resetSelection();
+      return undefined;
+    }
+
+    this.paymentAction = new PayBirdCost(this.player, card.foodCost);
+    const input = this.paymentAction.execute(game);
+    if (input) return input;
+
+    game.playBirdFromHand(this.player, birdName, habitat, card);
+    this.resetSelection();
+    return undefined;
+  }
+
+  private resetSelection(): void {
+    this.selectedBird = null;
+    this.selectedHabitat = null;
+    this.selectedCard = null;
+    this.paymentAction = null;
   }
 
   private getAllowedPlayableHabitats(cardHabitats: ReadonlyArray<HabitatType>): HabitatType[] {

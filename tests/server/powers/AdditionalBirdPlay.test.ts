@@ -36,6 +36,7 @@ describe('Additional bird white powers', () => {
     game.handleDeferredInput(alice.id, {
       selectedBirds: [BirdCardName.RED_EYED_VIREO],
     });
+    game.handleDeferredInput(alice.id, { selectedFood: [FoodType.INVERTEBRATE, FoodType.FRUIT] });
 
     const forestBirds = alice.board.getBirdsInHabitat(HabitatType.FOREST);
     expect(forestBirds.map(b => b.name)).toEqual(
@@ -70,6 +71,7 @@ describe('Additional bird white powers', () => {
     game.handleDeferredInput(alice.id, {
       selectedBirds: [BirdCardName.SAVANNAH_SPARROW],
     });
+    game.handleDeferredInput(alice.id, { selectedFood: [FoodType.INVERTEBRATE, FoodType.SEED] });
 
     const grasslandBirds = alice.board.getBirdsInHabitat(HabitatType.GRASSLAND);
     expect(grasslandBirds.map(b => b.name)).toEqual(

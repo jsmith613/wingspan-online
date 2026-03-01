@@ -123,18 +123,20 @@ export default defineComponent({
 
   &.die-selectable {
     cursor: pointer;
-    border-color: $color-success;
+    border-color: $color-border;
 
     &:hover {
       background: rgba($color-success, 0.1);
+      border-color: $color-success;
       transform: translateY(-2px);
     }
   }
 
   &.die-selected {
     border-color: $color-forest;
-    background: rgba($color-forest, 0.1);
-    box-shadow: 0 0 0 2px $color-forest;
+    border-width: 3px;
+    background: rgba($color-forest, 0.16);
+    box-shadow: 0 0 0 2px rgba($color-forest, 0.35);
   }
 }
 
