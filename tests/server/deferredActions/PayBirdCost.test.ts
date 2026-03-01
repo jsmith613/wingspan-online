@@ -35,4 +35,54 @@ describe('PayBirdCost', () => {
     expect(done).toBeUndefined();
     expect(player.food).toEqual([]);
   });
+
+  it('allows either exact 1 token or exchange 2 tokens for single-food costs', () => {
+    const player = createTestPlayer('Alice');
+    giveFood(player, [FoodType.FISH, FoodType.SEED, FoodType.FRUIT]);
+
+    const action = new PayBirdCost(player, [FoodType.FISH]);
+    const prompt = action.execute({} as any);
+
+    expect(prompt?.type).toBe(InputType.SELECT_FOOD);
+    expect((prompt as any).min).toBe(1);
+    expect((prompt as any).max).toBe(2);
+  });
+
+  it('rejects overpaying a single specific symbol', () => {
+    const player = createTestPlayer('Alice');
+    giveFood(player, [FoodType.INVERTEBRATE, FoodType.SEED, FoodType.FRUIT, FoodType.RODENT]);
+
+    const action = new PayBirdCost(player, [FoodType.INVERTEBRATE]);
+    const prompt = action.execute({} as any);
+    expect(prompt?.type).toBe(InputType.SELECT_FOOD);
+
+    const result = action.handleInput?.({} as any, {
+      selectedFood: [FoodType.INVERTEBRATE, FoodType.SEED, FoodType.FRUIT, FoodType.RODENT],
+    });
+    expect(result?.type).toBe(InputType.SELECT_FOOD);
+    expect(player.food).toEqual([FoodType.INVERTEBRATE, FoodType.SEED, FoodType.FRUIT, FoodType.RODENT]);
+  });
+
+  it('does not allow exchange pair to include the required symbol', () => {
+    const player = createTestPlayer('Alice');
+    giveFood(player, [FoodType.FISH, FoodType.FRUIT, FoodType.SEED]);
+
+    const action = new PayBirdCost(player, [FoodType.FISH]);
+    const prompt = action.execute({} as any);
+    expect(prompt?.type).toBe(InputType.SELECT_FOOD);
+    expect((prompt as any).min).toBe(1);
+    expect((prompt as any).max).toBe(2);
+
+    const invalid = action.handleInput?.({} as any, {
+      selectedFood: [FoodType.FISH, FoodType.FRUIT],
+    });
+    expect(invalid?.type).toBe(InputType.SELECT_FOOD);
+    expect(player.food).toEqual([FoodType.FISH, FoodType.FRUIT, FoodType.SEED]);
+
+    const valid = action.handleInput?.({} as any, {
+      selectedFood: [FoodType.FRUIT, FoodType.SEED],
+    });
+    expect(valid).toBeUndefined();
+    expect(player.food).toEqual([FoodType.FISH]);
+  });
 });

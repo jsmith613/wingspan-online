@@ -50,6 +50,7 @@
     <div v-if="game.waitingFor" class="input-area">
       <PlayerInputFactory
         :input="game.waitingFor"
+        :can-cancel="game.canCancel"
         @submit="onInputSubmit"
       />
     </div>
@@ -61,6 +62,10 @@
           :cards="handCards"
           :selectable="false"
         />
+      </div>
+      <div v-if="game.options?.showVpTotals" class="stash-score">
+        <h4 class="stash-label">Victory Points</h4>
+        <span class="vp-total">{{ currentPlayer.score }}</span>
       </div>
       <div class="stash-food">
         <h4 class="stash-label">Food Supply</h4>
@@ -239,6 +244,20 @@ export default defineComponent({
   .stash-hand {
     flex: 1;
     min-width: 0;
+  }
+
+  .stash-score {
+    flex-shrink: 0;
+    min-width: 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    .vp-total {
+      font-size: 36px;
+      font-weight: bold;
+      color: $color-forest;
+    }
   }
 
   .stash-food {

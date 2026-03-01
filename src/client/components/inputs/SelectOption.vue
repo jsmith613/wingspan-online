@@ -3,7 +3,7 @@
     <h3>{{ message }}</h3>
     <div class="card-option-area">
       <div class="tray-card-options">
-        <template v-for="option in options" :key="option">
+        <template v-for="option in displayOptions" :key="option">
           <BirdCard
             v-if="isTrayOption(option) && getCardDetails(option)"
             :card="getCardDetails(option)!"
@@ -11,6 +11,15 @@
             :selected="selected === option"
             @select="selected = option"
           />
+          <button
+            v-else-if="getFoodIcon(option)"
+            class="option-btn food-option-btn"
+            :class="{ 'option-selected': selected === option }"
+            @click="selected = option"
+            :title="displayLabel(option)"
+          >
+            <img :src="getFoodIcon(option)!" :alt="option" class="food-option-icon" />
+          </button>
           <button
             v-else
             class="option-btn"
@@ -21,6 +30,11 @@
       </div>
     </div>
     <div class="input-actions">
+      <button
+        v-if="skipOption"
+        class="btn-secondary"
+        @click="$emit('submit', { type: 'SELECT_OPTION', selectedOption: skipOption })"
+      >Skip</button>
       <button
         class="btn-primary"
         :disabled="!selected"
@@ -33,11 +47,15 @@
 <script lang="ts">
 import { defineComponent, PropType } from 'vue';
 import { ClientBirdCard } from '@common/cards/ClientBirdCard';
+import { FOOD_ICONS } from '../../utils/cardAssets';
 import BirdCard from '../cards/BirdCard.vue';
 
 const FRIENDLY_LABELS: Record<string, string> = {
   DRAW_FROM_DECK: 'Draw from Deck',
+  SKIP_TRADE: 'Skip',
 };
+
+const SKIP_OPTIONS = new Set(['SKIP_TRADE']);
 
 export default defineComponent({
   name: 'SelectOption',
@@ -52,6 +70,15 @@ export default defineComponent({
     return {
       selected: null as string | null,
     };
+  },
+  computed: {
+    skipOption(): string | null {
+      const skip = this.options.find(o => SKIP_OPTIONS.has(o));
+      return skip ?? null;
+    },
+    displayOptions(): string[] {
+      return this.options.filter(o => !SKIP_OPTIONS.has(o));
+    },
   },
   methods: {
     isTrayOption(option: string): boolean {
@@ -74,6 +101,9 @@ export default defineComponent({
       const cardName = this.getCardName(option);
       if (!cardName) return undefined;
       return this.cardDetails.find(card => card.name === cardName);
+    },
+    getFoodIcon(option: string): string | undefined {
+      return FOOD_ICONS[option];
     },
   },
 });
@@ -128,8 +158,23 @@ h3 {
   }
 }
 
+.food-option-btn {
+  padding: $space-sm;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  .food-option-icon {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+  }
+}
+
 .input-actions {
   margin-top: $space-md;
-  text-align: center;
+  display: flex;
+  justify-content: center;
+  gap: $space-md;
 }
 </style>

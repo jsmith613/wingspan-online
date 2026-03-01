@@ -68,6 +68,6 @@ export class GainFood extends DeferredAction {
   }
 
   isCancellationLocked(): boolean {
-    return this.rerolled;
+    return this.rerolled || this.gained > 0;
   }
 }

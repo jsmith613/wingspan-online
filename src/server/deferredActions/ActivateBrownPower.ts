@@ -16,6 +16,10 @@ export class ActivateBrownPower extends DeferredAction {
     this.card = card;
   }
 
+  isCancellationLocked(): boolean {
+    return true;
+  }
+
   execute(game: Game): PlayerInputModel | undefined {
     this.card.onActivate(this.player, game);
     return undefined;

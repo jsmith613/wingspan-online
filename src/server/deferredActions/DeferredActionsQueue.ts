@@ -10,6 +10,7 @@ import { PlayerInputModel } from '../../common/input/PlayerInputModel';
 export class DeferredActionsQueue {
   private queue: DeferredAction[] = [];
   private currentAction: DeferredAction | null = null;
+  private _hasCompletedAny: boolean = false;
 
   /** Add an action to the queue, maintaining priority order. */
   push(action: DeferredAction): void {
@@ -56,7 +57,8 @@ export class DeferredActionsQueue {
       return result;
     }
 
-    // Action completed without needing input
+    // Action completed without needing input (e.g. ActivateBrownPower)
+    this._hasCompletedAny = true;
     this.currentAction = null;
     return undefined;
   }
@@ -73,6 +75,7 @@ export class DeferredActionsQueue {
 
     if (!this.currentAction.handleInput) {
       // Action doesn't handle input — it's done
+      this._hasCompletedAny = true;
       this.currentAction = null;
       return undefined;
     }
@@ -83,6 +86,8 @@ export class DeferredActionsQueue {
       return result;
     }
 
+    // Action finished after handling input
+    this._hasCompletedAny = true;
     this.currentAction = null;
     return undefined;
   }
@@ -101,10 +106,16 @@ export class DeferredActionsQueue {
     return undefined;
   }
 
+  /** Whether any action has fully completed since the last clear. */
+  get hasCompletedAny(): boolean {
+    return this._hasCompletedAny;
+  }
+
   /** Clear the queue. */
   clear(): void {
     this.queue = [];
     this.currentAction = null;
+    this._hasCompletedAny = false;
   }
 
   /** Get the current action waiting for input. */

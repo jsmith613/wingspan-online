@@ -93,9 +93,10 @@ export class Birdfeeder {
     return this.allSameFace(this.getAvailableDice());
   }
 
-  /** Check if all dice show the same face. */
+  /** Check if all dice show the same face. With 1 die, trivially true. */
   private allSameFace(dice: ReadonlyArray<RolledDie>): boolean {
-    if (dice.length <= 1) return false;
+    if (dice.length === 0) return false;
+    if (dice.length === 1) return true;
     const first = dice[0].face.foods;
     return dice.every(d =>
       d.face.foods.length === first.length &&

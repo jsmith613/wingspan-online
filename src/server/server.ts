@@ -22,7 +22,13 @@ async function main(): Promise<void> {
 
   // Serve webpack-built client files as static assets
   const clientPath = path.resolve(__dirname, '../../dist/client');
-  app.use(express.static(clientPath));
+  app.use(express.static(clientPath, {
+    etag: false,
+    lastModified: false,
+    setHeaders: (res) => {
+      res.setHeader('Cache-Control', 'no-store');
+    },
+  }));
 
   // SPA fallback: serve index.html for any non-API route
   app.get('*', (_req, res) => {

@@ -21,6 +21,7 @@ import { SerializedBirdfeeder } from '../src/server/birdfeeder/Birdfeeder';
 import { Game } from '../src/server/Game';
 import { SQLiteDatabase } from '../src/server/database/SQLite';
 import { mulberry32, shuffle } from '../src/common/prng';
+import { GameOptions, DEFAULT_GAME_OPTIONS } from '../src/common/models/GameOptions';
 
 // ---------------------------------------------------------------------------
 // Scenario spec types (simplified input format)
@@ -56,6 +57,7 @@ interface ScenarioSpec {
   birdfeeder?: { dice?: FoodType[] };
   birdTray?: BirdCardName[];
   seed?: number;
+  options?: GameOptions;
 }
 
 // ---------------------------------------------------------------------------
@@ -249,6 +251,7 @@ async function main(): Promise<void> {
     discardPile: [],
     birdTray,
     bonusDeck,
+    options: spec.options ?? DEFAULT_GAME_OPTIONS,
   };
 
   // ---- Validate via Game.deserialize() ----

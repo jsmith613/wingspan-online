@@ -1,6 +1,7 @@
 import { GameId } from '../common/Types';
 import { Game } from './Game';
 import { MIN_PLAYERS, MAX_PLAYERS } from '../common/constants';
+import { GameOptions } from '../common/models/GameOptions';
 
 /**
  * Factory for creating and initializing new games.
@@ -15,7 +16,8 @@ export class GameSetup {
   static createGame(
     gameId: GameId,
     playerNames: string[],
-    seed?: number
+    seed?: number,
+    options?: GameOptions
   ): Game {
     if (playerNames.length < MIN_PLAYERS) {
       throw new Error(`Need at least ${MIN_PLAYERS} players, got ${playerNames.length}`);
@@ -24,7 +26,7 @@ export class GameSetup {
       throw new Error(`Maximum ${MAX_PLAYERS} players, got ${playerNames.length}`);
     }
 
-    const game = new Game(gameId, playerNames, seed);
+    const game = new Game(gameId, playerNames, seed, options);
     return game;
   }
 

@@ -6,6 +6,7 @@ import { DeferredAction } from '../deferredActions/DeferredAction';
 import { GainFood } from '../deferredActions/GainFood';
 import { LayEggs } from '../deferredActions/LayEggs';
 import { DrawCards } from '../deferredActions/DrawCards';
+import { OptionalTrade } from '../deferredActions/OptionalTrade';
 import { ActivateBrownPower } from '../deferredActions/ActivateBrownPower';
 import { createBirdCard } from '../cards/createCard';
 import { BirdCardName } from '../../common/cards/BirdCardName';
@@ -21,17 +22,21 @@ const HABITAT_ACTION_MAP: Record<HabitatType, ActionType> = {
 };
 
 /**
- * Action strength scales with the number of birds in the habitat.
- * Column index: 0=base, more birds = stronger.
- * Forest (gain food):   1, 1, 2, 2, 3
- * Grassland (lay eggs): 2, 2, 3, 3, 4
- * Wetland (draw cards):  1, 1, 2, 2, 3
+ * Action strength scales with the number of birds in the habitat (0-5 birds).
+ * Forest (gain food):    1, 1, 2, 2, 3, 3
+ * Grassland (lay eggs):  2, 2, 3, 3, 4, 4
+ * Wetland (draw cards):  1, 1, 2, 2, 3, 3
  */
 const ACTION_STRENGTH: Record<HabitatType, ReadonlyArray<number>> = {
-  [HabitatType.FOREST]:    [1, 1, 2, 2, 3],
-  [HabitatType.GRASSLAND]: [2, 2, 3, 3, 4],
-  [HabitatType.WETLAND]:   [1, 1, 2, 2, 3],
+  [HabitatType.FOREST]:    [1, 1, 2, 2, 3, 3],
+  [HabitatType.GRASSLAND]: [2, 2, 3, 3, 4, 4],
+  [HabitatType.WETLAND]:   [1, 1, 2, 2, 3, 3],
 };
+
+/**
+ * Optional trade is available when bird count is odd (1, 3, 5).
+ */
+const OPTIONAL_TRADE_BIRD_COUNTS = new Set([1, 3, 5]);
 
 /**
  * Get the action type for a habitat.
@@ -48,6 +53,13 @@ export function getActionStrength(habitat: HabitatType, birdCount: number): numb
   const strengths = ACTION_STRENGTH[habitat];
   const index = Math.min(birdCount, strengths.length - 1);
   return strengths[index];
+}
+
+/**
+ * Check whether the optional trade is available for this habitat at the given bird count.
+ */
+export function isOptionalTradeAvailable(habitat: HabitatType, birdCount: number): boolean {
+  return OPTIONAL_TRADE_BIRD_COUNTS.has(birdCount);
 }
 
 /**
@@ -74,8 +86,9 @@ export function createHabitatAction(
 /**
  * Execute a full habitat action:
  * 1. Create the base action
- * 2. Queue brown power activations (right-to-left through placed birds)
- * 3. Process the queue
+ * 2. If bird count is odd, queue an optional trade
+ * 3. Queue brown power activations (right-to-left through placed birds)
+ * 4. Process the queue
  *
  * Brown powers are activated right-to-left (from the rightmost bird toward the left).
  */
@@ -84,9 +97,16 @@ export function executeHabitatAction(
   habitat: HabitatType,
   game: Game
 ): void {
+  const birdCount = player.board.getBirdCount(habitat);
+
   // Base habitat action
   const baseAction = createHabitatAction(player, habitat, game);
   game.deferredActions.push(baseAction);
+
+  // Optional trade (available at odd bird counts: 1, 3, 5)
+  if (isOptionalTradeAvailable(habitat, birdCount)) {
+    game.deferredActions.push(new OptionalTrade(player, habitat));
+  }
 
   // Queue brown powers right-to-left (rightmost slot first).
   // These resolve after the base action and can enqueue more deferred actions.

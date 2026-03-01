@@ -27,54 +27,58 @@ function stateKey(foods: ReadonlyArray<FoodType>, costs: ReadonlyArray<FoodType>
   return `${[...foods].sort().join('|')}::${costs.join('|')}`;
 }
 
-function minTokensToPay(
+function possibleTokenCounts(
   availableFood: ReadonlyArray<FoodType>,
   requiredFood: ReadonlyArray<FoodType>,
-): number {
-  const memo = new Map<string, number>();
+): Set<number> {
+  const memo = new Map<string, Set<number>>();
 
-  const recurse = (foods: ReadonlyArray<FoodType>, costs: ReadonlyArray<FoodType>): number => {
-    if (costs.length === 0) return 0;
+  const recurse = (foods: ReadonlyArray<FoodType>, costs: ReadonlyArray<FoodType>): Set<number> => {
+    if (costs.length === 0) return new Set([0]);
 
     const key = stateKey(foods, costs);
     const cached = memo.get(key);
-    if (cached !== undefined) return cached;
+    if (cached) return cached;
 
     const [required, ...rest] = costs;
-    let best = Number.POSITIVE_INFINITY;
+    const result = new Set<number>();
 
     if (required === FoodType.WILD) {
       for (let i = 0; i < foods.length; i++) {
-        const next = recurse(removeAt(foods, i), rest);
-        if (Number.isFinite(next)) {
-          best = Math.min(best, 1 + next);
+        const nextCounts = recurse(removeAt(foods, i), rest);
+        for (const n of nextCounts) {
+          result.add(1 + n);
         }
       }
-      memo.set(key, best);
-      return best;
+      memo.set(key, result);
+      return result;
     }
 
     const exactIdx = foods.indexOf(required);
     if (exactIdx !== -1) {
-      const next = recurse(removeAt(foods, exactIdx), rest);
-      if (Number.isFinite(next)) {
-        best = Math.min(best, 1 + next);
+      const nextCounts = recurse(removeAt(foods, exactIdx), rest);
+      for (const n of nextCounts) {
+        result.add(1 + n);
       }
     }
 
     for (let i = 0; i < foods.length; i++) {
       for (let j = i + 1; j < foods.length; j++) {
+        // House rule: exchange pair for a specific symbol cannot include that symbol.
+        if (foods[i] === required || foods[j] === required) {
+          continue;
+        }
         const afterFirst = removeAt(foods, j);
         const afterBoth = removeAt(afterFirst, i);
-        const next = recurse(afterBoth, rest);
-        if (Number.isFinite(next)) {
-          best = Math.min(best, 2 + next);
+        const nextCounts = recurse(afterBoth, rest);
+        for (const n of nextCounts) {
+          result.add(2 + n);
         }
       }
     }
 
-    memo.set(key, best);
-    return best;
+    memo.set(key, result);
+    return result;
   };
 
   return recurse([...availableFood], [...requiredFood]);
@@ -87,7 +91,7 @@ function canSelectedFoodsPayCost(
   const memo = new Map<string, boolean>();
 
   const recurse = (foods: ReadonlyArray<FoodType>, costs: ReadonlyArray<FoodType>): boolean => {
-    if (costs.length === 0) return true;
+    if (costs.length === 0) return foods.length === 0;
     const key = stateKey(foods, costs);
     const cached = memo.get(key);
     if (cached !== undefined) return cached;
@@ -112,6 +116,10 @@ function canSelectedFoodsPayCost(
 
     for (let i = 0; i < foods.length; i++) {
       for (let j = i + 1; j < foods.length; j++) {
+        // House rule: exchange pair for a specific symbol cannot include that symbol.
+        if (foods[i] === required || foods[j] === required) {
+          continue;
+        }
         const afterFirst = removeAt(foods, j);
         const afterBoth = removeAt(afterFirst, i);
         if (recurse(afterBoth, rest)) {
@@ -139,7 +147,7 @@ export function canAffordBirdFoodCost(
   availableFood: ReadonlyArray<FoodType>,
   requiredFood: ReadonlyArray<FoodType>,
 ): boolean {
-  return Number.isFinite(minTokensToPay(availableFood, requiredFood));
+  return possibleTokenCounts(availableFood, requiredFood).size > 0;
 }
 
 /**
@@ -148,12 +156,21 @@ export function canAffordBirdFoodCost(
  */
 export class PayBirdCost extends DeferredAction {
   private readonly cost: FoodType[];
+  private readonly allowedCounts: Set<number>;
   private readonly minTokensRequired: number;
+  private readonly maxTokensAllowed: number;
 
   constructor(player: Player, cost: ReadonlyArray<FoodType>) {
     super(player, ActionPriority.COST);
     this.cost = [...cost];
-    this.minTokensRequired = minTokensToPay(this.player.food, this.cost);
+    this.allowedCounts = possibleTokenCounts(this.player.food, this.cost);
+    if (this.allowedCounts.size === 0) {
+      this.minTokensRequired = Number.POSITIVE_INFINITY;
+      this.maxTokensAllowed = Number.NEGATIVE_INFINITY;
+    } else {
+      this.minTokensRequired = Math.min(...this.allowedCounts);
+      this.maxTokensAllowed = Math.max(...this.allowedCounts);
+    }
   }
 
   execute(_game: Game): PlayerInputModel | undefined {
@@ -166,7 +183,7 @@ export class PayBirdCost extends DeferredAction {
   handleInput(_game: Game, response: unknown): PlayerInputModel | undefined {
     const selected = this.normalizeSelectedFoods(response);
     if (
-      selected.length !== this.minTokensRequired ||
+      !this.allowedCounts.has(selected.length) ||
       !canSelectedFoodsPayCost(selected, this.cost)
     ) {
       return this.buildFoodPrompt();
@@ -185,7 +202,7 @@ export class PayBirdCost extends DeferredAction {
   }
 
   isCancellationLocked(): boolean {
-    return true;
+    return false;
   }
 
   private buildFoodPrompt(): PlayerInputModel {
@@ -198,10 +215,10 @@ export class PayBirdCost extends DeferredAction {
       type: InputType.SELECT_FOOD,
       availableDice,
       min: this.minTokensRequired,
-      max: this.minTokensRequired,
+      max: Math.min(this.maxTokensAllowed, this.cost.length * 2),
       message: `Pay bird cost (${costLabel})`,
       requiredCost: this.cost,
-      lockBack: true,
+      lockBack: false,
     };
   }
 

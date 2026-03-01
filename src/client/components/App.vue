@@ -122,9 +122,9 @@ export default defineComponent({
       return state.expectedInputPlayerId || state.currentPlayerId;
     },
 
-    async onGameStart(playerNames: string[]) {
+    async onGameStart({ playerNames, options }: { playerNames: string[]; options?: import('@common/models/GameOptions').GameOptions }) {
       try {
-        const result = await api.createGame(playerNames);
+        const result = await api.createGame(playerNames, options);
         this.gameId = result.gameId;
         this.playerIds = result.playerIds;
         this.persistSession();

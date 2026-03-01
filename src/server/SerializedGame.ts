@@ -5,6 +5,7 @@ import { BirdCardName } from '../common/cards/BirdCardName';
 import { BonusCardName } from '../common/cards/BonusCardName';
 import { SerializedPlayerBoard } from './habitats/PlayerBoard';
 import { SerializedBirdfeeder } from './birdfeeder/Birdfeeder';
+import { GameOptions } from '../common/models/GameOptions';
 
 export interface SerializedPlayer {
   id: PlayerId;
@@ -29,4 +30,5 @@ export interface SerializedGame {
   discardPile: BirdCardName[];
   birdTray: BirdCardName[];
   bonusDeck: BonusCardName[];
+  options?: GameOptions;
 }

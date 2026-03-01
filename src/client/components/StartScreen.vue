@@ -29,6 +29,13 @@
         </div>
       </div>
 
+      <div class="game-options">
+        <label class="option-checkbox">
+          <input type="checkbox" v-model="showVpTotals" />
+          Show victory point totals during game
+        </label>
+      </div>
+
       <button
         class="btn-primary start-btn"
         :disabled="!canStart"
@@ -51,6 +58,7 @@ export default defineComponent({
     return {
       playerCount: MIN_PLAYERS,
       names: ['', '', '', '', ''] as string[],
+      showVpTotals: true,
       error: '',
     };
   },
@@ -78,7 +86,7 @@ export default defineComponent({
         return;
       }
       this.error = '';
-      this.$emit('start', playerNames);
+      this.$emit('start', { playerNames, options: { showVpTotals: this.showVpTotals } });
     },
   },
 });
@@ -162,6 +170,27 @@ export default defineComponent({
       outline: none;
       border-color: $color-forest;
       box-shadow: 0 0 0 2px rgba($color-forest, 0.2);
+    }
+  }
+}
+
+.game-options {
+  margin-bottom: $space-lg;
+
+  .option-checkbox {
+    display: flex;
+    align-items: center;
+    gap: $space-sm;
+    justify-content: center;
+    font-weight: bold;
+    color: $color-bark;
+    cursor: pointer;
+
+    input[type='checkbox'] {
+      width: 18px;
+      height: 18px;
+      accent-color: $color-forest;
+      cursor: pointer;
     }
   }
 }

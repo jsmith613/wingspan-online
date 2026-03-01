@@ -158,6 +158,10 @@ export default defineComponent({
 
   &.card-selected {
     box-shadow: 0 0 0 3px #2e7d32, 0 4px 12px rgba(0, 0, 0, 0.3);
+
+    &:hover {
+      box-shadow: 0 0 0 3px #2e7d32, 0 6px 16px rgba(0, 0, 0, 0.25);
+    }
   }
 }
 

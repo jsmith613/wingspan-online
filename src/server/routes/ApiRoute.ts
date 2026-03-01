@@ -17,14 +17,14 @@ export function createApiRouter(db: IDatabase): Router {
   /** POST /api/game - Create a new game */
   router.post('/game', (req: Request, res: Response) => {
     try {
-      const { playerNames } = req.body as { playerNames: string[] };
+      const { playerNames, options } = req.body as { playerNames: string[]; options?: import('../../common/models/GameOptions').GameOptions };
       if (!Array.isArray(playerNames) || playerNames.length < 2) {
         res.status(400).json({ error: 'playerNames must be an array with at least 2 entries' });
         return;
       }
 
       const gameId = GameSetup.generateGameId();
-      const game = GameSetup.createGame(gameId, playerNames);
+      const game = GameSetup.createGame(gameId, playerNames, undefined, options);
 
       // Start the game (deals cards, begins setup phase)
       game.startGame();

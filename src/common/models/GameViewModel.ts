@@ -4,6 +4,7 @@ import { Phase } from '../game/Phase';
 import { BirdCardName } from '../cards/BirdCardName';
 import { FoodType } from '../game/FoodType';
 import { PlayerInputModel } from '../input/PlayerInputModel';
+import { GameOptions } from './GameOptions';
 
 export interface BirdfeederDie {
   readonly foods: ReadonlyArray<FoodType>;
@@ -34,4 +35,6 @@ export interface GameViewModel {
   readonly birdTray: BirdTrayView;
   readonly roundGoals: ReadonlyArray<RoundGoalView>;
   readonly waitingFor: PlayerInputModel | null;
+  readonly canCancel: boolean;
+  readonly options: GameOptions;
 }

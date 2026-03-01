@@ -322,6 +322,9 @@ export class Game {
       return this.advanceTurn();
     }
 
+    // Reset the deferred actions queue so canCancel is fresh for this turn.
+    this.deferredActions.clear();
+
     if (isNewTurn) {
       this.powerEventBus.startNewTurn();
     }
@@ -512,9 +515,15 @@ export class Game {
     if (!this.pendingBirdPlacement) {
       return this.handleCancelAction(playerId);
     }
+
     if (this.pendingBirdPlacement.habitat !== undefined) {
-      return this.handleCancelAction(playerId);
+      // Player is on the food payment screen — go back to habitat selection.
+      // Clear the payment action and reset the habitat choice.
+      this.deferredActions.clear();
+      this.pendingBirdPlacement.habitat = undefined;
+      return this.handleBirdSelection(playerId, this.pendingBirdPlacement.birdName);
     }
+
     this.pendingBirdPlacement = null;
 
     // Card never left hand and food was never paid, so nothing to refund.

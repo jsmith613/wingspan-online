@@ -8,8 +8,8 @@ You are setting up a Wingspan game scenario for testing. The user will describe 
 2. Map bird common names to `BirdCardName` enum values (e.g., "Northern Cardinal" → `NORTHERN_CARDINAL`, "Blue Jay" → `BLUE_JAY`)
 3. Map food names to `FoodType` enum values: `INVERTEBRATE`, `SEED`, `FISH`, `FRUIT`, `RODENT`, `WILD`
 4. Map bonus card names to `BonusCardName` enum values (e.g., "Anatomist" → `ANATOMIST`)
-5. Run the setup script
-6. Output the results with clickable URLs
+5. Write the scenario to a JSON file and run the setup script
+6. Restart the server and output the results
 
 ## Scenario JSON format
 
@@ -52,29 +52,45 @@ You are setting up a Wingspan game scenario for testing. The user will describe 
 - `birdTray`: drawn from deck if omitted
 - `seed`: `Date.now()` if omitted
 
+## Important notes
+
+- **Always write the scenario to a JSON file** (e.g., `scripts/scenarios/my-scenario.json`) and pass the file path to the script. Do NOT pass inline JSON as a CLI argument — shell quoting issues will break it.
+- **The server must be restarted** after inserting a game. The server uses sql.js which loads the SQLite DB into memory at startup, so it won't see games inserted by a separate process. After running the script, find and kill the existing server process, then restart it.
+- **The client ignores `playerId` in the URL.** It always shows the view for whichever player the server says should provide input next (`expectedInputPlayerId`). The URL only needs `?gameId=<GAME_ID>`.
+- When the user asks to test a bird with specific powers, look up its food cost in `src/server/cards/base/` and ensure the player has enough food in the scenario to pay for it (and any additional birds it triggers).
+
 ## Running the script
 
+1. Write the scenario JSON to a file under `scripts/scenarios/`.
+
+2. Run the setup script from the project root:
 ```bash
-cd /c/Users/Josiah/wingspan && npx ts-node scripts/setup-scenario.ts '<SCENARIO_JSON>'
+npx ts-node scripts/setup-scenario.ts scripts/scenarios/<name>.json
 ```
 
-Or save to a file first and pass the path:
+3. Restart the server so it picks up the new game. Find and kill the process listening on the server port (default 3000), then start fresh:
 ```bash
-cd /c/Users/Josiah/wingspan && npx ts-node scripts/setup-scenario.ts scripts/scenarios/my-scenario.json
+npx ts-node src/server/server.ts &
+```
+
+4. Verify the game loads:
+```bash
+curl -s http://localhost:3000/api/game/<GAME_ID> | head -5
 ```
 
 ## Output format
 
-After running the script, present the results like this:
+After running the script and restarting the server, present the results like this:
 
 ```
 Game created successfully!
 
 Game ID: <GAME_ID>
+URL: http://localhost:3000?gameId=<GAME_ID>
 
 Players:
-- <NAME> (ID: <PLAYER_ID>): http://localhost:3000?gameId=<GAME_ID>&playerId=<PLAYER_ID>
-- <NAME> (ID: <PLAYER_ID>): http://localhost:3000?gameId=<GAME_ID>&playerId=<PLAYER_ID>
+- <NAME> (player_0)
+- <NAME> (player_1)
 
 Round: <ROUND>, Phase: <PHASE>
 Current player: <NAME>

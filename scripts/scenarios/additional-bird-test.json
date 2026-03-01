@@ -1,0 +1,23 @@
+{
+  "players": [
+    {
+      "name": "Alice",
+      "food": ["INVERTEBRATE", "INVERTEBRATE", "FRUIT", "SEED"],
+      "hand": ["EASTERN_BLUEBIRD", "KILLDEER"],
+      "bonusCards": [],
+      "actionCubes": 8
+    },
+    {
+      "name": "Bob",
+      "food": ["SEED"],
+      "hand": ["BLUE_JAY"],
+      "bonusCards": [],
+      "actionCubes": 8
+    }
+  ],
+  "round": 1,
+  "currentPlayerIndex": 0,
+  "phase": "PLAYER_TURN",
+  "birdfeeder": { "dice": ["SEED", "FISH", "INVERTEBRATE", "FRUIT", "RODENT"] },
+  "seed": 99
+}

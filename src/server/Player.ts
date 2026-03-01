@@ -120,8 +120,8 @@ export class Player {
 
     // Points from bird cards (their face value)
     for (const bird of this.board.getAllBirds()) {
-      // Bird point values will come from card data; for now count birds
-      score += 0; // Will be replaced when card system provides points
+      const card = createBirdCard(bird.name as BirdCardName);
+      score += card ? card.points : 0;
     }
 
     // Eggs on birds

@@ -22,8 +22,24 @@
       </div>
     </template>
     <template v-else>
-      <span class="slot-label">{{ columnIndex + 1 }}</span>
       <span v-if="eggCost > 0" class="slot-egg-cost" :title="eggCost + ' egg cost'">{{ eggCost }}</span>
+      <div class="slot-empty-content">
+        <div class="slot-action-track" v-if="habitatType">
+          <div class="primary-row">
+            <img
+              v-for="n in actionStrength"
+              :key="'icon-' + n"
+              :src="actionIcon"
+              class="action-icon"
+            />
+          </div>
+          <div v-if="hasTrade" class="trade-row">
+            <img :src="tradeCostIcon" class="action-icon trade-cost" />
+            <span class="trade-arrow">-&gt;</span>
+            <img :src="actionIcon" class="action-icon" />
+          </div>
+        </div>
+      </div>
     </template>
 
     <!-- Full-size hover popup teleported to body -->
@@ -42,8 +58,31 @@
 <script lang="ts">
 import { defineComponent, PropType } from 'vue';
 import { PlayerBoardSlot } from '@common/models/PlayerViewModel';
+import { HabitatType } from '@common/game/HabitatType';
 import { EGG_COST_BY_COLUMN } from '@common/constants';
+import { EGG_ICON, FOOD_ICONS } from '../../utils/cardAssets';
 import BirdCard from '../cards/BirdCard.vue';
+import cardIcon from '../../assets/icons/card.webp';
+
+const ACTION_ICONS: Record<string, string> = {
+  [HabitatType.FOREST]: FOOD_ICONS.WILD,
+  [HabitatType.GRASSLAND]: EGG_ICON,
+  [HabitatType.WETLAND]: cardIcon,
+};
+
+const TRADE_COST_ICONS: Record<string, string> = {
+  [HabitatType.FOREST]: cardIcon,
+  [HabitatType.GRASSLAND]: FOOD_ICONS.WILD,
+  [HabitatType.WETLAND]: EGG_ICON,
+};
+
+const COLUMN_ACTION_STRENGTH: Record<string, number[]> = {
+  [HabitatType.FOREST]: [1, 1, 2, 2, 3],
+  [HabitatType.GRASSLAND]: [2, 2, 3, 3, 4],
+  [HabitatType.WETLAND]: [1, 1, 2, 2, 3],
+};
+
+const TRADE_COLUMNS = new Set([1, 3]);
 
 export default defineComponent({
   name: 'BirdSlot',
@@ -52,6 +91,7 @@ export default defineComponent({
     slot: { type: Object as PropType<PlayerBoardSlot>, required: true },
     columnIndex: { type: Number, required: true },
     selectable: { type: Boolean, default: false },
+    habitatType: { type: String as PropType<HabitatType>, default: null },
   },
   emits: ['select'],
   data() {
@@ -62,6 +102,20 @@ export default defineComponent({
   computed: {
     eggCost(): number {
       return EGG_COST_BY_COLUMN[this.columnIndex] ?? 0;
+    },
+    actionStrength(): number {
+      if (!this.habitatType) return 0;
+      const strengths = COLUMN_ACTION_STRENGTH[this.habitatType];
+      return strengths?.[this.columnIndex] ?? 0;
+    },
+    hasTrade(): boolean {
+      return TRADE_COLUMNS.has(this.columnIndex);
+    },
+    actionIcon(): string {
+      return this.habitatType ? ACTION_ICONS[this.habitatType] || '' : '';
+    },
+    tradeCostIcon(): string {
+      return this.habitatType ? TRADE_COST_ICONS[this.habitatType] || '' : '';
     },
     popupStyle(): Record<string, string> {
       const el = this.$refs.slotEl as HTMLElement | undefined;
@@ -97,6 +151,9 @@ $scaled-h: 360px * $card-scale;  // 162px
 
 .bird-slot {
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
   &.slot-filled {
     width: $scaled-w;
@@ -119,6 +176,48 @@ $scaled-h: 360px * $card-scale;  // 162px
     transform: scale($card-scale);
     transform-origin: top left;
   }
+}
+
+.slot-action-track {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+}
+
+.slot-empty-content {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.primary-row,
+.trade-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 10px;
+}
+
+.action-icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+.trade-cost {
+  width: 13px;
+  height: 13px;
+  opacity: 0.65;
+}
+
+.trade-arrow {
+  font-size: 10px;
+  color: #666;
+  line-height: 1;
 }
 
 .slot-tokens-overlay {
@@ -162,3 +261,4 @@ $scaled-h: 360px * $card-scale;  // 162px
   to { opacity: 1; transform: scale(1); }
 }
 </style>
+

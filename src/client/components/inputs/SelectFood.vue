@@ -23,7 +23,7 @@
         class="btn-primary"
         :disabled="!canConfirm"
         @click="confirm"
-      >Confirm ({{ selections.length }}/{{ max }})</button>
+      >Confirm</button>
     </div>
   </div>
 </template>
@@ -48,7 +48,7 @@ function canSelectedFoodsPayCost(
   const memo = new Map<string, boolean>();
 
   const recurse = (foods: ReadonlyArray<FoodType>, costs: ReadonlyArray<FoodType>): boolean => {
-    if (costs.length === 0) return true;
+    if (costs.length === 0) return foods.length === 0;
     const key = `${[...foods].sort().join('|')}::${costs.join('|')}`;
     const cached = memo.get(key);
     if (cached !== undefined) return cached;
@@ -73,6 +73,10 @@ function canSelectedFoodsPayCost(
 
     for (let i = 0; i < foods.length; i++) {
       for (let j = i + 1; j < foods.length; j++) {
+        // House rule: exchange pair for a specific symbol cannot include that symbol.
+        if (foods[i] === required || foods[j] === required) {
+          continue;
+        }
         const afterFirst = removeAt(foods, j);
         const afterBoth = removeAt(afterFirst, i);
         if (recurse(afterBoth, rest)) {
@@ -116,6 +120,17 @@ export default defineComponent({
     };
   },
   computed: {
+    normalizedRequiredCost(): FoodType[] {
+      if (this.requiredCost.length > 0) {
+        return [...this.requiredCost];
+      }
+      const match = this.message.match(/^Pay bird cost \((.+)\)$/);
+      if (!match) return [];
+      return match[1]
+        .split(',')
+        .map(token => token.trim())
+        .filter((token): token is FoodType => Object.values(FoodType).includes(token as FoodType));
+    },
     hintText(): string {
       if (this.message) return this.message;
       return `Choose ${this.min}${this.max !== this.min ? ` to ${this.max}` : ''} food from the birdfeeder`;
@@ -127,14 +142,38 @@ export default defineComponent({
       return this.selections.map(s => FOOD_LABELS[s.food] || s.food).join(', ');
     },
     canConfirm(): boolean {
-      if (this.selections.length < this.min || this.selections.length > this.max) {
+      if (this.selections.length < this.effectiveMin || this.selections.length > this.effectiveMax) {
         return false;
       }
-      if (this.requiredCost.length === 0) {
+      if (this.normalizedRequiredCost.length === 0) {
         return true;
       }
       const selectedFoods = this.selections.map(s => s.food);
-      return canSelectedFoodsPayCost(selectedFoods, this.requiredCost);
+      return canSelectedFoodsPayCost(selectedFoods, this.normalizedRequiredCost);
+    },
+    effectiveMin(): number {
+      return this.min;
+    },
+    effectiveMax(): number {
+      if (this.normalizedRequiredCost.length === 0) return this.max;
+      return Math.min(this.max, this.normalizedRequiredCost.length * 2);
+    },
+  },
+  watch: {
+    availableDice() {
+      this.selections = [];
+    },
+    message() {
+      this.selections = [];
+    },
+    min() {
+      this.selections = [];
+    },
+    max() {
+      this.selections = [];
+    },
+    requiredCost() {
+      this.selections = [];
     },
   },
   methods: {
@@ -146,7 +185,7 @@ export default defineComponent({
       } else if (this.min === this.max && this.max === 1) {
         // Single-select mode — replace
         this.selections = [{ dieIndex, food }];
-      } else if (this.selections.length < this.max) {
+      } else if (this.selections.length < this.effectiveMax) {
         this.selections.push({ dieIndex, food });
       }
     },

@@ -164,7 +164,13 @@ export default defineComponent({
       if (this.input.type === 'SELECT_HABITAT_SLOT') {
         return 'Back to Bird Selection';
       }
+      if (this.isBirdPayment) {
+        return 'Back to Habitat Selection';
+      }
       return 'Back to Action Selection';
+    },
+    isBirdPayment(): boolean {
+      return this.input.type === 'SELECT_FOOD' && ((this.input as any).message || '').startsWith('Pay bird cost');
     },
   },
   methods: {
@@ -172,7 +178,7 @@ export default defineComponent({
       return ACTION_LABELS[action] || action;
     },
     onBack() {
-      if (this.input.type === 'SELECT_HABITAT_SLOT') {
+      if (this.input.type === 'SELECT_HABITAT_SLOT' || this.isBirdPayment) {
         this.$emit('submit', { cancel: true, cancelType: 'habitat' });
       } else {
         this.$emit('submit', { cancel: true });

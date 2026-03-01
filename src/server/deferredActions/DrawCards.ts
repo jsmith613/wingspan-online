@@ -49,6 +49,10 @@ export class DrawCards extends DeferredAction {
     return this.askForCard(game);
   }
 
+  isCancellationLocked(): boolean {
+    return this.drawn > 0;
+  }
+
   private askForCard(game: Game): PlayerInputModel | undefined {
     if (this.drawn >= this.count) {
       return undefined;

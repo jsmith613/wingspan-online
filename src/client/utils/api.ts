@@ -1,6 +1,7 @@
 import { GameId, PlayerId } from '@common/Types';
 import { GameViewModel } from '@common/models/GameViewModel';
 import { PlayerInputModel } from '@common/input/PlayerInputModel';
+import { GameOptions } from '@common/models/GameOptions';
 
 const BASE_URL = '/api';
 
@@ -18,6 +19,7 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 
 export interface CreateGameRequest {
   playerNames: string[];
+  options?: GameOptions;
 }
 
 export interface CreateGameResponse {
@@ -25,10 +27,10 @@ export interface CreateGameResponse {
   playerIds: PlayerId[];
 }
 
-export function createGame(playerNames: string[]): Promise<CreateGameResponse> {
+export function createGame(playerNames: string[], options?: GameOptions): Promise<CreateGameResponse> {
   return request(`${BASE_URL}/game`, {
     method: 'POST',
-    body: JSON.stringify({ playerNames } as CreateGameRequest),
+    body: JSON.stringify({ playerNames, options } as CreateGameRequest),
   });
 }
 
