@@ -25,6 +25,7 @@ import { PowerEventBus, GameEvent } from './powers/PowerEventBus';
 import { PowerType } from '../common/game/PowerType';
 import { GameOptions, DEFAULT_GAME_OPTIONS } from '../common/models/GameOptions';
 import { PayBirdCost, canAffordBirdFoodCost } from './deferredActions/PayBirdCost';
+import { GoalTile, selectGoalTiles, scoreRoundGoal, getGoalTileById } from './goals/GoalRegistry';
 
 export class Game {
   public readonly id: GameId;
@@ -43,6 +44,8 @@ export class Game {
   private discardPile: BirdCardName[];
   private birdTray: (BirdCardName | null)[];
   private bonusDeck: BonusCardName[];
+  private roundGoalTiles: GoalTile[];
+  private roundGoalScoresByRound: number[][];
 
   private waitingFor: PlayerInputModel | null = null;
   private pendingSetupBirdsKept: number = 0;
@@ -78,6 +81,17 @@ export class Game {
     this.discardPile = [];
     this.bonusDeck = this.createBonusDeck();
     this.birdTray = [];
+    this.roundGoalTiles = selectGoalTiles(this.rng);
+    this.roundGoalScoresByRound = [];
+  }
+
+  private ensureRoundGoalsInitialized(): void {
+    if (!this.roundGoalTiles || this.roundGoalTiles.length !== 4) {
+      this.roundGoalTiles = selectGoalTiles(this.rng);
+    }
+    if (!this.roundGoalScoresByRound) {
+      this.roundGoalScoresByRound = [];
+    }
   }
 
   /** Get the current player. */
@@ -177,6 +191,7 @@ export class Game {
    * Start the game. Transitions from SETUP to dealing cards and starting setup choices.
    */
   startGame(): PlayerInputModel | undefined {
+    this.ensureRoundGoalsInitialized();
     this.refillBirdTray();
     this.dealStartingCards();
     this.phase = Phase.SETUP;
@@ -333,6 +348,7 @@ export class Game {
 
   /** Start a new round. */
   startRound(): PlayerInputModel | undefined {
+    this.ensureRoundGoalsInitialized();
     this.round++;
     if (this.round > MAX_ROUNDS) {
       return this.endGame();
@@ -438,7 +454,8 @@ export class Game {
     const unaffordableBirds = player.hand.filter(name => {
       const card = createBirdCard(name);
       if (!card) return false;
-      return !canAffordBirdFoodCost(player.food, card.foodCost);
+      if (!canAffordBirdFoodCost(player.food, card.foodCost)) return true;
+      return this.getPlayableHabitatsForCard(player, card).length === 0;
     });
 
     this.waitingFor = {
@@ -507,8 +524,8 @@ export class Game {
 
     // Determine valid habitats
     const validHabitats = card
-      ? card.habitats.filter(h => player.board.hasSpace(h))
-      : Object.values(HabitatType).filter(h => player.board.hasSpace(h));
+      ? this.getPlayableHabitatsForCard(player, card)
+      : Object.values(HabitatType).filter(h => player.board.hasSpace(h) && player.canAffordEggCost(player.getEggCostForHabitat(h)));
 
     if (card && !canAffordBirdFoodCost(player.food, card.foodCost)) {
       return this.handlePlayBird(player);
@@ -536,6 +553,19 @@ export class Game {
     if (!player) throw new Error(`Player ${playerId} not found`);
 
     if (!this.pendingBirdPlacement) throw new Error('No bird pending placement');
+    const card = this.pendingBirdPlacement.card ?? createBirdCard(this.pendingBirdPlacement.birdName);
+    const validHabitats = card
+      ? this.getPlayableHabitatsForCard(player, card)
+      : Object.values(HabitatType).filter(h => player.board.hasSpace(h) && player.canAffordEggCost(player.getEggCostForHabitat(h)));
+
+    if (!validHabitats.includes(habitat)) {
+      this.waitingFor = {
+        type: InputType.SELECT_HABITAT_SLOT,
+        availableHabitats: validHabitats,
+      };
+      return this.waitingFor;
+    }
+
     this.pendingBirdPlacement.playerId = playerId;
     this.pendingBirdPlacement.habitat = habitat;
     return this.startPendingBirdPayment(player);
@@ -653,6 +683,9 @@ export class Game {
 
     // Pay egg cost for the column
     const eggCost = player.getEggCostForHabitat(habitat);
+    if (!player.canAffordEggCost(eggCost)) {
+      throw new Error(`Insufficient eggs to place bird in ${habitat}`);
+    }
     // Simple: remove eggs from first birds that have them
     let eggsRemaining = eggCost;
     if (eggsRemaining > 0) {
@@ -685,6 +718,15 @@ export class Game {
 
     // Trigger "another player plays a bird" pink powers.
     this.fireGameEvent(GameEvent.BIRD_PLAYED, player);
+  }
+
+  private getPlayableHabitatsForCard(
+    player: Player,
+    card: import('./cards/BirdCard').BirdCard,
+  ): HabitatType[] {
+    return card.habitats.filter((h) =>
+      player.board.hasSpace(h) && player.canAffordEggCost(player.getEggCostForHabitat(h)),
+    );
   }
 
   /** Handle GAIN_FOOD action via habitat. */
@@ -793,8 +835,20 @@ export class Game {
 
   /** End the current round. Score round goals, then start next round. */
   endRound(): PlayerInputModel | undefined {
+    this.ensureRoundGoalsInitialized();
     this.phase = Phase.ROUND_END;
-    // Round goal scoring would happen here (Phase 3 / goals system)
+
+    const goalIndex = this.round - 1;
+    const goal = this.roundGoalTiles[goalIndex];
+    if (goal) {
+      const pointsByPlayer = scoreRoundGoal(goal, this.players, this.round);
+      const roundScores = this.players.map((player) => pointsByPlayer.get(player) ?? 0);
+      this.roundGoalScoresByRound[goalIndex] = roundScores;
+      for (let i = 0; i < this.players.length; i++) {
+        this.players[i].roundGoalPoints[goalIndex] = roundScores[i];
+      }
+    }
+
     return this.startRound();
   }
 
@@ -836,6 +890,7 @@ export class Game {
 
   /** Get the game view model for the client. */
   toViewModel(): GameViewModel {
+    this.ensureRoundGoalsInitialized();
     return {
       id: this.id,
       phase: this.phase,
@@ -869,7 +924,14 @@ export class Game {
           };
         }),
       },
-      roundGoals: [], // Will be populated by goal system
+      roundGoals: this.roundGoalTiles.map((goal, goalIndex) => ({
+        goalId: goal.id,
+        description: goal.description,
+        scores: (this.roundGoalScoresByRound[goalIndex] ?? []).map((points, playerIndex) => ({
+          playerId: this.players[playerIndex].id,
+          points,
+        })),
+      })),
       waitingFor: this.waitingFor,
       canCancel: this.canCancelCurrentInput(),
       options: this.options,
@@ -881,6 +943,7 @@ export class Game {
   // =========================================================================
 
   serialize(): SerializedGame {
+    this.ensureRoundGoalsInitialized();
     return {
       id: this.id,
       seed: this.seed,
@@ -893,6 +956,8 @@ export class Game {
       discardPile: [...this.discardPile],
       birdTray: [...this.birdTray],
       bonusDeck: [...this.bonusDeck],
+      roundGoalTileIds: this.roundGoalTiles.map(goal => goal.id),
+      roundGoalScores: this.roundGoalScoresByRound.map(scores => [...scores]),
       options: this.options,
     };
   }
@@ -908,6 +973,13 @@ export class Game {
     game.discardPile = [...data.discardPile];
     game.birdTray = [...data.birdTray];
     game.bonusDeck = [...data.bonusDeck];
+    if (data.roundGoalTileIds && data.roundGoalTileIds.length > 0) {
+      game.roundGoalTiles = data.roundGoalTileIds
+        .map((id) => getGoalTileById(id))
+        .filter((goal): goal is GoalTile => goal !== undefined);
+    }
+    game.roundGoalScoresByRound = (data.roundGoalScores ?? []).map(scores => [...scores]);
+    game.ensureRoundGoalsInitialized();
     game.rebuildPowerListeners();
     game.restoreInputState();
     return game;

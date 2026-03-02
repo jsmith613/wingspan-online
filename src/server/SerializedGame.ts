@@ -30,5 +30,7 @@ export interface SerializedGame {
   discardPile: BirdCardName[];
   birdTray: (BirdCardName | null)[];
   bonusDeck: BonusCardName[];
+  roundGoalTileIds?: string[];
+  roundGoalScores?: number[][];
   options?: GameOptions;
 }

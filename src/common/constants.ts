@@ -26,4 +26,4 @@ export const MIN_PLAYERS = 2;
 
 export const END_OF_ROUND_GOAL_COUNT = 4;
 
-export const TOTAL_GOAL_TILES = 8;
+export const TOTAL_GOAL_TILES = 17;

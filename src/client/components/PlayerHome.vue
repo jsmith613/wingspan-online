@@ -59,6 +59,7 @@
         <RoundGoalTracker
           :round-goals="game.roundGoals"
           :current-round="game.round"
+          :players="game.players"
         />
       </div>
     </div>

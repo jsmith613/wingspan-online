@@ -359,7 +359,7 @@ describe('GoalRegistry', () => {
   });
 
   it('should award 0 points for 0 value', () => {
-    const goal = ALL_GOAL_TILES.find(g => g.id === 'cached_food')!;
+    const goal = ALL_GOAL_TILES.find(g => g.id === 'eggs_in_wetland')!;
     const p1 = new Player('p1' as PlayerId, 'Alice', 8);
     const p2 = new Player('p2' as PlayerId, 'Bob', 8);
 
