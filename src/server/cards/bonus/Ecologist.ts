@@ -3,19 +3,16 @@ import { BonusCardName } from '../../../common/cards/BonusCardName';
 import { HabitatType } from '../../../common/game/HabitatType';
 import type { Player } from '../../Player';
 
-/** Points based on how evenly birds are distributed across habitats. */
 export class Ecologist extends BonusCard {
   readonly name = BonusCardName.ECOLOGIST;
   readonly displayName = 'Ecologist';
-  readonly description = '3 points for each habitat with at least 3 birds.';
+  readonly description = 'Birds in your habitat with the fewest birds.';
+  readonly condition = 'Count birds in the habitat with the fewest birds (ties count)';
+  readonly vpText = '2pts per bird';
 
   score(player: Player): number {
-    let count = 0;
-    for (const habitat of Object.values(HabitatType)) {
-      if (player.board.getBirdCount(habitat) >= 3) {
-        count++;
-      }
-    }
-    return count * 3;
+    const counts = Object.values(HabitatType).map(h => player.board.getBirdCount(h));
+    const min = Math.min(...counts);
+    return min * 2;
   }
 }

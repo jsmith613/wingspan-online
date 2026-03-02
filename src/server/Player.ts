@@ -9,7 +9,7 @@ import { PlayerBoard, PlacedBird } from './habitats/PlayerBoard';
 import { PlayerViewModel } from '../common/models/PlayerViewModel';
 import { SerializedPlayer } from './SerializedGame';
 import { ClientBirdCard } from '../common/cards/ClientBirdCard';
-import { createBirdCard } from './cards/createCard';
+import { createBirdCard, createBonusCard } from './cards/createCard';
 
 export class Player {
   public readonly id: PlayerId;
@@ -136,7 +136,13 @@ export class Player {
     // Round goal points
     score += this.roundGoalPoints.reduce((sum, p) => sum + p, 0);
 
-    // Bonus card points would be calculated by the card system
+    // Bonus card points
+    for (const bonusName of this.bonusCards) {
+      const bonusCard = createBonusCard(bonusName);
+      if (bonusCard) {
+        score += bonusCard.score(this);
+      }
+    }
 
     return score;
   }
@@ -187,6 +193,18 @@ export class Player {
       hand: [...this.hand],
       handDetails: this.hand.map(name => this.buildClientCard(name)),
       bonusCards: [...this.bonusCards],
+      bonusCardDetails: this.bonusCards.map(name => {
+        const card = createBonusCard(name);
+        if (card) return card.toClientCard(this);
+        return {
+          name,
+          displayName: String(name).replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+          description: '',
+          condition: '',
+          vpText: '',
+          score: 0,
+        };
+      }),
       food: [...this.food],
       board: {
         [HabitatType.FOREST]: this.buildHabitatView(HabitatType.FOREST),

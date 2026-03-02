@@ -8,6 +8,7 @@ export enum ActionPriority {
   DEFAULT = 3,
   GAIN = 4,
   DRAW = 5,
+  TRADE = 7,
   PINK_POWER = 10,
 }
 

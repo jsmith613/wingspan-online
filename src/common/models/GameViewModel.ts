@@ -2,6 +2,7 @@ import { GameId, PlayerId } from '../Types';
 import { PlayerViewModel } from './PlayerViewModel';
 import { Phase } from '../game/Phase';
 import { BirdCardName } from '../cards/BirdCardName';
+import { ClientBirdCard } from '../cards/ClientBirdCard';
 import { FoodType } from '../game/FoodType';
 import { PlayerInputModel } from '../input/PlayerInputModel';
 import { GameOptions } from './GameOptions';
@@ -16,6 +17,7 @@ export interface BirdfeederView {
 
 export interface BirdTrayView {
   readonly faceUpCards: ReadonlyArray<BirdCardName>;
+  readonly cardDetails: ReadonlyArray<ClientBirdCard>;
 }
 
 export interface RoundGoalView {

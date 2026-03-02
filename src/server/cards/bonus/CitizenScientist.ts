@@ -1,18 +1,18 @@
 import { BonusCard } from '../BonusCard';
 import { BonusCardName } from '../../../common/cards/BonusCardName';
-import { HabitatType } from '../../../common/game/HabitatType';
 import type { Player } from '../../Player';
 
-/** Points based on the minimum birds across all habitats. */
 export class CitizenScientist extends BonusCard {
   readonly name = BonusCardName.CITIZEN_SCIENTIST;
   readonly displayName = 'Citizen Scientist';
-  readonly description = '2 points for each column with a bird in every habitat row.';
+  readonly description = 'Birds with tucked cards.';
+  readonly condition = 'Bird has at least 1 tucked card behind it';
+  readonly vpText = '4-6 birds: 3pts; 7+ birds: 6pts';
 
   score(player: Player): number {
-    const forest = player.board.getBirdCount(HabitatType.FOREST);
-    const grassland = player.board.getBirdCount(HabitatType.GRASSLAND);
-    const wetland = player.board.getBirdCount(HabitatType.WETLAND);
-    return Math.min(forest, grassland, wetland) * 2;
+    const count = player.board.getAllBirds().filter(b => b.tuckedCards > 0).length;
+    if (count >= 7) return 6;
+    if (count >= 4) return 3;
+    return 0;
   }
 }

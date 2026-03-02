@@ -11,6 +11,7 @@ import { createBirdCard } from '../cards/createCard';
 import { BirdCardName } from '../../common/cards/BirdCardName';
 
 const SKIP = 'SKIP_TRADE';
+const BACK = 'BACK_TRADE';
 
 /**
  * Optional trade action available at odd bird counts in a habitat.
@@ -23,10 +24,11 @@ const SKIP = 'SKIP_TRADE';
  */
 export class OptionalTrade extends DeferredAction {
   private readonly habitat: HabitatType;
-  private phase: 'pick-card' | 'pick-food' | 'pick-egg' = 'pick-card';
+  private phase: 'pick-card' | 'pick-food' | 'pick-egg' | 'pick-wetland-card' = 'pick-card';
+  private pendingEggBird: string | null = null;
 
   constructor(player: Player, habitat: HabitatType) {
-    super(player, ActionPriority.GAIN);
+    super(player, ActionPriority.TRADE);
     this.habitat = habitat;
   }
 
@@ -65,14 +67,32 @@ export class OptionalTrade extends DeferredAction {
     }
 
     if (this.phase === 'pick-egg') {
-      // Wetland trade: player chose which bird to remove an egg from
-      const bird = this.player.board.getAllBirds().find(b => b.name === selected);
+      // Wetland trade step 1: player chose which bird — don't remove egg yet
+      this.pendingEggBird = selected;
+      return this.showWetlandCardSelection(game);
+    }
+
+    if (this.phase === 'pick-wetland-card') {
+      if (selected === BACK) {
+        this.pendingEggBird = null;
+        return this.showWetlandTrade();
+      }
+      // Wetland trade step 2: player chose a card — now remove the egg
+      const bird = this.player.board.getAllBirds().find(b => b.name === this.pendingEggBird);
       if (bird && bird.eggs > 0) {
         bird.eggs--;
       }
-      const drawn = game.drawFromDeck();
-      if (drawn) {
-        this.player.addCardToHand(drawn);
+      if (selected === 'DRAW_FROM_DECK') {
+        const drawn = game.drawFromDeck();
+        if (drawn) {
+          this.player.addCardToHand(drawn);
+        }
+      } else if (selected.startsWith('TRAY:')) {
+        const cardName = selected.split(':')[1];
+        const card = game.takeFromTray(cardName as BirdCardName);
+        if (card) {
+          this.player.addCardToHand(card);
+        }
       }
       return undefined;
     }
@@ -161,6 +181,47 @@ export class OptionalTrade extends DeferredAction {
       type: InputType.SELECT_OPTION,
       options: [...birdsWithEggs, SKIP],
       message: 'Optional: discard an egg to draw 1 extra card, or skip.',
+    };
+  }
+
+  private showWetlandCardSelection(game: Game): PlayerInputModel {
+    this.phase = 'pick-wetland-card';
+    const trayCards = game.getBirdTray();
+
+    const options: string[] = [];
+    for (const card of trayCards) {
+      const label = String(card).replace(/_/g, ' ').replace(/\b\w/g, (ch: string) => ch.toUpperCase());
+      options.push(`TRAY:${card}:${label}`);
+    }
+    options.push('DRAW_FROM_DECK');
+    options.push(BACK);
+
+    const cardDetails = trayCards.map(name => {
+      const card = createBirdCard(name);
+      if (card) return card.toClientCard();
+      return {
+        name,
+        commonName: String(name).replace(/_/g, ' ').replace(/\b\w/g, (ch: string) => ch.toUpperCase()),
+        scientificName: '',
+        habitats: Object.values(HabitatType),
+        foodCost: [] as FoodType[],
+        nestType: 'BOWL' as any,
+        eggCapacity: 0,
+        wingspan: 0,
+        points: 0,
+        powerType: 'NONE' as any,
+        powerText: '',
+        eggs: 0,
+        cachedFood: 0,
+        tuckedCards: 0,
+      };
+    });
+
+    return {
+      type: InputType.SELECT_OPTION,
+      options,
+      cardDetails,
+      message: 'Choose a card to draw (trade 1 egg), or skip.',
     };
   }
 }

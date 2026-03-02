@@ -5,20 +5,23 @@ import { createBirdCard } from '../createCard';
 import { BirdCardName } from '../../../common/cards/BirdCardName';
 import { NestType } from '../../../common/game/NestType';
 
-/** Points for platform-nesting birds. */
 export class PlatformBuilder extends BonusCard {
   readonly name = BonusCardName.PLATFORM_BUILDER;
   readonly displayName = 'Platform Builder';
-  readonly description = '2 points for each bird with a platform nest.';
+  readonly description = 'Birds with platform nests.';
+  readonly condition = 'Bird nest type is platform or star (wild)';
+  readonly vpText = '4-5 birds: 4pts; 6+ birds: 7pts';
 
   score(player: Player): number {
     let count = 0;
     for (const bird of player.board.getAllBirds()) {
       const card = createBirdCard(bird.name as BirdCardName);
-      if (card && card.nestType === NestType.PLATFORM) {
+      if (card && (card.nestType === NestType.PLATFORM || card.nestType === NestType.STAR)) {
         count++;
       }
     }
-    return count * 2;
+    if (count >= 6) return 7;
+    if (count >= 4) return 4;
+    return 0;
   }
 }

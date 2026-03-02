@@ -5,11 +5,12 @@ import { createBirdCard } from '../createCard';
 import { BirdCardName } from '../../../common/cards/BirdCardName';
 import { FoodType } from '../../../common/game/FoodType';
 
-/** Points for birds that eat rodents. */
 export class Rodentologist extends BonusCard {
   readonly name = BonusCardName.RODENTOLOGIST;
   readonly displayName = 'Rodentologist';
-  readonly description = '2 points for each bird that has rodent in its food cost.';
+  readonly description = 'Birds that eat rodent.';
+  readonly condition = 'Bird food cost includes rodent';
+  readonly vpText = '2pts per bird';
 
   score(player: Player): number {
     let count = 0;

@@ -41,10 +41,11 @@ export class Game {
   private rng: () => number;
   private deck: BirdCardName[];
   private discardPile: BirdCardName[];
-  private birdTray: BirdCardName[];
+  private birdTray: (BirdCardName | null)[];
   private bonusDeck: BonusCardName[];
 
   private waitingFor: PlayerInputModel | null = null;
+  private pendingSetupBirdsKept: number = 0;
   private pendingBirdPlacement: {
     playerId: PlayerId;
     birdName: BirdCardName;
@@ -117,23 +118,30 @@ export class Game {
     return this.bonusDeck.pop() ?? null;
   }
 
-  /** Get the face-up bird tray cards. */
+  /** Get the face-up bird tray cards (excludes empty slots). */
   getBirdTray(): BirdCardName[] {
-    return [...this.birdTray];
+    return this.birdTray.filter((c): c is BirdCardName => c !== null);
   }
 
-  /** Take a specific card from the bird tray. */
+  /** Take a specific card from the bird tray. Slot is kept as null until refill. */
   takeFromTray(card: BirdCardName): BirdCardName | null {
     const idx = this.birdTray.indexOf(card);
     if (idx === -1) return null;
-    this.birdTray.splice(idx, 1);
-    // Refill tray
-    this.refillBirdTray();
+    this.birdTray[idx] = null;
     return card;
   }
 
-  /** Refill the bird tray to BIRD_TRAY_SIZE. */
+  /** Refill the bird tray — replace null slots in-place, then fill to size. */
   private refillBirdTray(): void {
+    // Replace any null slots in-place
+    for (let i = 0; i < this.birdTray.length; i++) {
+      if (this.birdTray[i] === null) {
+        const card = this.drawFromDeck();
+        if (!card) break;
+        this.birdTray[i] = card;
+      }
+    }
+    // Fill remaining slots if tray is short
     while (this.birdTray.length < BIRD_TRAY_SIZE) {
       const card = this.drawFromDeck();
       if (!card) break;
@@ -250,8 +258,37 @@ export class Game {
       this.discardCard(card);
     }
 
-    // Each kept bird costs 1 food — player needs to choose which food to discard
-    const foodToDiscard = keptBirds.length;
+    // Store how many birds were kept so we know the food cost later
+    this.pendingSetupBirdsKept = keptBirds.length;
+
+    // If the player has 2+ bonus cards, ask them to pick 1
+    if (player.bonusCards.length > 1) {
+      this.waitingFor = {
+        type: InputType.SELECT_BONUS_CARD,
+        availableBonusCards: [...player.bonusCards],
+        min: 1,
+        max: 1,
+      };
+      return this.waitingFor;
+    }
+
+    return this.proceedToFoodSelection(player);
+  }
+
+  /** Handle a player's bonus card selection during setup (keep 1 of 2). */
+  handleBonusCardChoice(playerId: PlayerId, keptBonusCards: BonusCardName[]): PlayerInputModel | undefined {
+    const player = this.getPlayer(playerId);
+    if (!player) throw new Error(`Player ${playerId} not found`);
+
+    // Remove bonus cards not kept
+    player.bonusCards = player.bonusCards.filter(c => keptBonusCards.includes(c));
+
+    return this.proceedToFoodSelection(player);
+  }
+
+  /** After birds and bonus card selection, handle food discard. */
+  private proceedToFoodSelection(player: Player): PlayerInputModel | undefined {
+    const foodToDiscard = this.pendingSetupBirdsKept;
     const foodToKeep = STARTING_FOOD_COUNT - foodToDiscard;
 
     // If they need to discard food, ask them
@@ -722,6 +759,8 @@ export class Game {
 
   /** Finish the current player's turn and advance. */
   private finishTurn(): PlayerInputModel | undefined {
+    // Refill the bird tray at end of turn (not mid-turn per rulebook).
+    this.refillBirdTray();
     this.phase = Phase.BETWEEN_TURNS;
     this.waitingFor = this.advanceTurn() || null;
     return this.waitingFor ?? undefined;
@@ -808,7 +847,27 @@ export class Game {
         dice: this.birdfeeder.getAvailableDice().map(d => ({ foods: [...d.face.foods] })),
       },
       birdTray: {
-        faceUpCards: [...this.birdTray],
+        faceUpCards: this.birdTray.filter((c): c is BirdCardName => c !== null),
+        cardDetails: this.birdTray.filter((c): c is BirdCardName => c !== null).map(name => {
+          const card = createBirdCard(name);
+          if (card) return card.toClientCard();
+          return {
+            name,
+            commonName: String(name).replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+            scientificName: '',
+            habitats: [] as any,
+            foodCost: [] as any,
+            nestType: 'BOWL' as any,
+            eggCapacity: 0,
+            wingspan: 0,
+            points: 0,
+            powerType: 'NONE' as any,
+            powerText: '',
+            eggs: 0,
+            cachedFood: 0,
+            tuckedCards: 0,
+          };
+        }),
       },
       roundGoals: [], // Will be populated by goal system
       waitingFor: this.waitingFor,

@@ -5,11 +5,12 @@ import { createBirdCard } from '../createCard';
 import { BirdCardName } from '../../../common/cards/BirdCardName';
 import { FoodType } from '../../../common/game/FoodType';
 
-/** Points for birds that eat fish. */
 export class FisheryManager extends BonusCard {
   readonly name = BonusCardName.FISHERY_MANAGER;
   readonly displayName = 'Fishery Manager';
-  readonly description = '1 point for each bird that has fish in its food cost.';
+  readonly description = 'Birds that eat fish.';
+  readonly condition = 'Bird food cost includes fish';
+  readonly vpText = '2-3 birds: 3pts; 4+ birds: 8pts';
 
   score(player: Player): number {
     let count = 0;
@@ -19,6 +20,8 @@ export class FisheryManager extends BonusCard {
         count++;
       }
     }
-    return count;
+    if (count >= 4) return 8;
+    if (count >= 2) return 3;
+    return 0;
   }
 }

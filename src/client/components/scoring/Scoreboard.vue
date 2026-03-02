@@ -22,7 +22,15 @@
           <td>{{ row.cachedFoodPoints }}</td>
           <td>{{ row.tuckedCardPoints }}</td>
           <td>{{ row.goalPoints }}</td>
-          <td>{{ row.bonusPoints }}</td>
+          <td>
+            {{ row.bonusPoints }}
+            <div v-if="row.bonusBreakdown.length > 0" class="bonus-breakdown">
+              <div v-for="b in row.bonusBreakdown" :key="b.name" class="bonus-line">
+                <span class="bonus-card-name">{{ b.displayName }}</span>
+                <span class="bonus-card-score">{{ b.score }}</span>
+              </div>
+            </div>
+          </td>
           <td class="total-cell">{{ row.total }}</td>
         </tr>
       </tbody>
@@ -33,7 +41,14 @@
 <script lang="ts">
 import { defineComponent, PropType } from 'vue';
 import { PlayerViewModel } from '@common/models/PlayerViewModel';
+import { ClientBonusCard } from '@common/cards/ClientBonusCard';
 import { HabitatType } from '@common/game/HabitatType';
+
+interface BonusBreakdownItem {
+  name: string;
+  displayName: string;
+  score: number;
+}
 
 interface ScoreRow {
   name: string;
@@ -43,6 +58,7 @@ interface ScoreRow {
   tuckedCardPoints: number;
   goalPoints: number;
   bonusPoints: number;
+  bonusBreakdown: BonusBreakdownItem[];
   total: number;
   isWinner: boolean;
 }
@@ -72,9 +88,16 @@ export default defineComponent({
         }
 
         const goalPoints = p.roundGoalPoints.reduce((sum, pts) => sum + pts, 0);
-        // Bonus card points are included in p.score but we don't have a separate breakdown yet
-        const subtotal = birdPoints + eggPoints + cachedFoodPoints + tuckedCardPoints + goalPoints;
-        const bonusPoints = p.score - subtotal;
+
+        const bonusBreakdown: BonusBreakdownItem[] = (p.bonusCardDetails || []).map((bc: ClientBonusCard) => ({
+          name: bc.name,
+          displayName: bc.displayName,
+          score: bc.score,
+        }));
+
+        const bonusPoints = bonusBreakdown.length > 0
+          ? bonusBreakdown.reduce((sum, b) => sum + b.score, 0)
+          : Math.max(0, p.score - (birdPoints + eggPoints + cachedFoodPoints + tuckedCardPoints + goalPoints));
 
         return {
           name: p.name,
@@ -83,7 +106,8 @@ export default defineComponent({
           cachedFoodPoints,
           tuckedCardPoints,
           goalPoints,
-          bonusPoints: Math.max(0, bonusPoints),
+          bonusPoints,
+          bonusBreakdown,
           total: p.score,
           isWinner: false,
         };
@@ -142,5 +166,31 @@ h2 {
       color: $color-forest;
     }
   }
+
+  .bonus-breakdown {
+    margin-top: 4px;
+  }
+
+  .bonus-line {
+    display: flex;
+    justify-content: space-between;
+    gap: $space-sm;
+    font-size: $font-size-xs;
+    color: $color-text-light;
+    line-height: 1.6;
+  }
+
+  .bonus-card-name {
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .bonus-card-score {
+    font-weight: bold;
+    flex-shrink: 0;
+  }
+
 }
 </style>

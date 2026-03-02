@@ -1,5 +1,6 @@
 import { PlayerId } from '../Types';
 import { ClientBirdCard } from '../cards/ClientBirdCard';
+import { ClientBonusCard } from '../cards/ClientBonusCard';
 import { BirdCardName } from '../cards/BirdCardName';
 import { BonusCardName } from '../cards/BonusCardName';
 import { FoodType } from '../game/FoodType';
@@ -22,6 +23,7 @@ export interface PlayerViewModel {
   readonly hand: ReadonlyArray<BirdCardName>;
   readonly handDetails: ReadonlyArray<ClientBirdCard>;
   readonly bonusCards: ReadonlyArray<BonusCardName>;
+  readonly bonusCardDetails: ReadonlyArray<ClientBonusCard>;
   readonly food: ReadonlyArray<FoodType>;
   readonly board: PlayerBoardView;
   readonly score: number;

@@ -4,11 +4,12 @@ import type { Player } from '../../Player';
 import { createBirdCard } from '../createCard';
 import { BirdCardName } from '../../../common/cards/BirdCardName';
 
-/** Points for birds with wingspan <= 30cm (small birds / passerines). */
 export class PasserineSpecialist extends BonusCard {
   readonly name = BonusCardName.PASSERINE_SPECIALIST;
   readonly displayName = 'Passerine Specialist';
-  readonly description = '1 point for each bird with a wingspan of 30cm or less.';
+  readonly description = 'Birds with wingspan 30cm or less.';
+  readonly condition = 'Bird wingspan <= 30cm';
+  readonly vpText = '4-5 birds: 3pts; 6+ birds: 6pts';
 
   score(player: Player): number {
     let count = 0;
@@ -18,6 +19,8 @@ export class PasserineSpecialist extends BonusCard {
         count++;
       }
     }
-    return count;
+    if (count >= 6) return 6;
+    if (count >= 4) return 3;
+    return 0;
   }
 }

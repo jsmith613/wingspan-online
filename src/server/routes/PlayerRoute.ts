@@ -127,6 +127,11 @@ function routeInput(
       game.handleSetupChoice(playerId, input.selectedBirds || []);
       break;
 
+    case InputType.SELECT_BONUS_CARD:
+      // input: { selectedBonusCards: BonusCardName[] }
+      game.handleBonusCardChoice(playerId, input.selectedBonusCards || []);
+      break;
+
     case InputType.SELECT_STARTING_FOOD:
       // input: { selectedFood: FoodType[] }
       game.handleStartingFoodChoice(playerId, input.selectedFood || []);

@@ -5,11 +5,12 @@ import { createBirdCard } from '../createCard';
 import { BirdCardName } from '../../../common/cards/BirdCardName';
 import { FoodType } from '../../../common/game/FoodType';
 
-/** Points for birds that eat fruit. */
 export class Viticulturist extends BonusCard {
   readonly name = BonusCardName.VITICULTURIST;
   readonly displayName = 'Viticulturist';
-  readonly description = '1 point for each bird that has fruit in its food cost.';
+  readonly description = 'Birds that eat fruit.';
+  readonly condition = 'Bird food cost includes fruit';
+  readonly vpText = '2-3 birds: 3pts; 4+ birds: 7pts';
 
   score(player: Player): number {
     let count = 0;
@@ -19,6 +20,8 @@ export class Viticulturist extends BonusCard {
         count++;
       }
     }
-    return count;
+    if (count >= 4) return 7;
+    if (count >= 2) return 3;
+    return 0;
   }
 }

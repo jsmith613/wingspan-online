@@ -4,17 +4,18 @@ import type { Player } from '../../Player';
 import { createBirdCard } from '../createCard';
 import { BirdCardName } from '../../../common/cards/BirdCardName';
 
-/** Points for birds with wingspan >= 100cm. */
 export class Falconer extends BonusCard {
   readonly name = BonusCardName.FALCONER;
   readonly displayName = 'Falconer';
-  readonly description = '2 points for each bird with a wingspan of 100cm or more.';
+  readonly description = 'Birds with a predator power.';
+  readonly condition = 'Bird power text contains "predator" or hunts other birds';
+  readonly vpText = '2pts per bird';
 
   score(player: Player): number {
     let count = 0;
     for (const bird of player.board.getAllBirds()) {
       const card = createBirdCard(bird.name as BirdCardName);
-      if (card && card.wingspan >= 100) {
+      if (card && card.powerText.toLowerCase().includes('predator')) {
         count++;
       }
     }

@@ -28,7 +28,7 @@ export interface SerializedGame {
   birdfeeder: SerializedBirdfeeder;
   deck: BirdCardName[];
   discardPile: BirdCardName[];
-  birdTray: BirdCardName[];
+  birdTray: (BirdCardName | null)[];
   bonusDeck: BonusCardName[];
   options?: GameOptions;
 }

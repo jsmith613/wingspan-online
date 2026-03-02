@@ -1,23 +1,33 @@
 import { BonusCard } from '../BonusCard';
 import { BonusCardName } from '../../../common/cards/BonusCardName';
 import type { Player } from '../../Player';
+import { createBirdCard } from '../createCard';
+import { BirdCardName } from '../../../common/cards/BirdCardName';
 
-/** Birds with body part in their name. Approximated as: 2 pts per bird with wingspan > 65cm. */
+const BODY_PARTS = [
+  'beak', 'belly', 'bill', 'breast', 'cap', 'chin', 'collar', 'crest',
+  'crown', 'eye', 'face', 'head', 'neck', 'rump', 'shoulder', 'tail',
+  'throat', 'wing',
+];
+
 export class Anatomist extends BonusCard {
   readonly name = BonusCardName.ANATOMIST;
   readonly displayName = 'Anatomist';
-  readonly description = '2 points for each bird in your play area with a body part in its common name.';
+  readonly description = 'Birds with body parts in their name.';
+  readonly condition = 'Bird name contains a body part (beak, belly, bill, breast, cap, chin, collar, crest, crown, eye, face, head, neck, rump, shoulder, tail, throat, wing)';
+  readonly vpText = '2-3 birds: 3pts; 4+ birds: 7pts';
 
   score(player: Player): number {
-    // Simplified: counts birds whose names contain body part keywords
-    const bodyParts = ['throat', 'eye', 'wing', 'tail', 'breast', 'head', 'beak', 'bill', 'crown', 'belly'];
     let count = 0;
     for (const bird of player.board.getAllBirds()) {
-      const lowerName = bird.name.toLowerCase().replace(/_/g, ' ');
-      if (bodyParts.some(part => lowerName.includes(part))) {
+      const card = createBirdCard(bird.name as BirdCardName);
+      const lowerName = card ? card.commonName.toLowerCase() : bird.name.toLowerCase().replace(/_/g, ' ');
+      if (BODY_PARTS.some(part => lowerName.includes(part))) {
         count++;
       }
     }
-    return count * 2;
+    if (count >= 4) return 7;
+    if (count >= 2) return 3;
+    return 0;
   }
 }

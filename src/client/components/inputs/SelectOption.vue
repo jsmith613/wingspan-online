@@ -31,6 +31,11 @@
     </div>
     <div class="input-actions">
       <button
+        v-if="backOption"
+        class="btn-secondary"
+        @click="$emit('submit', { type: 'SELECT_OPTION', selectedOption: backOption })"
+      >&larr; Back</button>
+      <button
         v-if="skipOption"
         class="btn-secondary"
         @click="$emit('submit', { type: 'SELECT_OPTION', selectedOption: skipOption })"
@@ -56,6 +61,7 @@ const FRIENDLY_LABELS: Record<string, string> = {
 };
 
 const SKIP_OPTIONS = new Set(['SKIP_TRADE']);
+const BACK_OPTIONS = new Set(['BACK_TRADE']);
 
 export default defineComponent({
   name: 'SelectOption',
@@ -76,8 +82,12 @@ export default defineComponent({
       const skip = this.options.find(o => SKIP_OPTIONS.has(o));
       return skip ?? null;
     },
+    backOption(): string | null {
+      const back = this.options.find(o => BACK_OPTIONS.has(o));
+      return back ?? null;
+    },
     displayOptions(): string[] {
-      return this.options.filter(o => !SKIP_OPTIONS.has(o));
+      return this.options.filter(o => !SKIP_OPTIONS.has(o) && !BACK_OPTIONS.has(o));
     },
   },
   methods: {

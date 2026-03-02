@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import { SQLiteDatabase } from './database/SQLite';
 import { createApiRouter } from './routes/ApiRoute';
 import { createPlayerRouter } from './routes/PlayerRoute';
@@ -20,8 +21,14 @@ async function main(): Promise<void> {
   app.use('/api', createApiRouter(db));
   app.use('/api/player', createPlayerRouter(db));
 
-  // Serve webpack-built client files as static assets
-  const clientPath = path.resolve(__dirname, '../../dist/client');
+  // Serve webpack-built client files as static assets.
+  // Support both ts-node (`src/server`) and compiled output (`dist/server/server`).
+  const candidateClientPaths = [
+    path.resolve(__dirname, '../../dist/client'),
+    path.resolve(__dirname, '../../../dist/client'),
+  ];
+  const clientPath = candidateClientPaths.find((p) => fs.existsSync(path.join(p, 'index.html')))
+    ?? candidateClientPaths[0];
   app.use(express.static(clientPath, {
     etag: false,
     lastModified: false,
