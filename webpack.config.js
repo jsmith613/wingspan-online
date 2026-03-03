@@ -65,6 +65,7 @@ module.exports = (env, argv) => {
       new HtmlWebpackPlugin({
         template: './src/client/index.html',
         title: 'Wingspan',
+        favicon: './src/client/assets/icons/favicon.png',
       }),
       ...(isProduction ? [new MiniCssExtractPlugin({
         filename: 'css/[name].[contenthash:8].css',
