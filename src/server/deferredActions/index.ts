@@ -17,6 +17,7 @@ export { DrawThenDiscardOne } from './DrawThenDiscardOne';
 export { AllPlayersGainFoodFromSupply } from './AllPlayersGainFoodFromSupply';
 export { AllPlayersDrawFromDeck } from './AllPlayersDrawFromDeck';
 export { DiscardEggForWildFood } from './DiscardEggForWildFood';
+export { DiscardEggToDrawCards } from './DiscardEggToDrawCards';
 export { PayFoodToTuckFromDeck } from './PayFoodToTuckFromDeck';
 export { GainFromBirdfeederChoices } from './GainFromBirdfeederChoices';
 export { RepeatBrownPowerInHabitat } from './RepeatBrownPowerInHabitat';

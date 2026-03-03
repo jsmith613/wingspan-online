@@ -10,7 +10,8 @@
         :class="{ 'option-selected': isSelected(name) }"
         @click="toggle(name)"
       >
-        <span class="option-name">{{ formatName(name) }}</span>
+        <BonusCard v-if="getBonusDetails(name)" :card="getBonusDetails(name)!" />
+        <span v-else class="option-name">{{ formatName(name) }}</span>
       </div>
     </div>
     <div class="input-actions">
@@ -31,11 +32,16 @@
 <script lang="ts">
 import { defineComponent, PropType } from 'vue';
 import { BirdCardName } from '@common/cards/BirdCardName';
+import { BonusCardName } from '@common/cards/BonusCardName';
+import { ClientBonusCard } from '@common/cards/ClientBonusCard';
+import BonusCard from '../cards/BonusCard.vue';
 
 export default defineComponent({
   name: 'SelectCards',
+  components: { BonusCard },
   props: {
-    availableCards: { type: Array as PropType<BirdCardName[]>, required: true },
+    availableCards: { type: Array as PropType<Array<BirdCardName | BonusCardName>>, required: true },
+    bonusCardDetails: { type: Array as PropType<ClientBonusCard[]>, default: () => [] },
     message: { type: String, default: '' },
     min: { type: Number, required: true },
     max: { type: Number, required: true },
@@ -43,7 +49,7 @@ export default defineComponent({
   emits: ['submit'],
   data() {
     return {
-      selected: [] as BirdCardName[],
+      selected: [] as Array<BirdCardName | BonusCardName>,
     };
   },
   methods: {
@@ -51,13 +57,16 @@ export default defineComponent({
       if (this.message) return this.message;
       return `Choose ${this.min}${this.max !== this.min ? ` to ${this.max}` : ''} card${this.max > 1 ? 's' : ''}`;
     },
-    formatName(name: BirdCardName): string {
+    formatName(name: BirdCardName | BonusCardName): string {
       return String(name).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
     },
-    isSelected(name: BirdCardName): boolean {
+    getBonusDetails(name: BirdCardName | BonusCardName): ClientBonusCard | undefined {
+      return this.bonusCardDetails.find((c) => c.name === name);
+    },
+    isSelected(name: BirdCardName | BonusCardName): boolean {
       return this.selected.includes(name);
     },
-    toggle(name: BirdCardName) {
+    toggle(name: BirdCardName | BonusCardName) {
       const pos = this.selected.indexOf(name);
       if (pos >= 0) {
         this.selected.splice(pos, 1);
@@ -107,6 +116,10 @@ export default defineComponent({
   &.option-selected {
     border-color: $color-forest;
     background: $color-forest-bg;
+  }
+
+  :deep(.bonus-card) {
+    pointer-events: none;
   }
 
   .option-name { font-weight: bold; }

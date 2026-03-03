@@ -20,7 +20,7 @@ import { DeferredActionsQueue } from './deferredActions/DeferredActionsQueue';
 import { executeHabitatAction } from './habitats/HabitatAction';
 import { SerializedGame } from './SerializedGame';
 import { mulberry32, shuffle } from '../common/prng';
-import { createBirdCard } from './cards/createCard';
+import { createBirdCard, createBonusCard } from './cards/createCard';
 import { PowerEventBus, GameEvent } from './powers/PowerEventBus';
 import { PowerType } from '../common/game/PowerType';
 import { GameOptions, DEFAULT_GAME_OPTIONS } from '../common/models/GameOptions';
@@ -46,9 +46,11 @@ export class Game {
   private bonusDeck: BonusCardName[];
   private roundGoalTiles: GoalTile[];
   private roundGoalScoresByRound: number[][];
+  private seatClaims: Record<PlayerId, string>;
 
   private waitingFor: PlayerInputModel | null = null;
-  private pendingSetupBirdsKept: number = 0;
+  private setupStepByPlayerId: Partial<Record<PlayerId, 'birds' | 'bonus' | 'food' | 'done'>>;
+  private pendingSetupBirdsKeptByPlayerId: Partial<Record<PlayerId, number>>;
   private pendingBirdPlacement: {
     playerId: PlayerId;
     birdName: BirdCardName;
@@ -83,6 +85,9 @@ export class Game {
     this.birdTray = [];
     this.roundGoalTiles = selectGoalTiles(this.rng);
     this.roundGoalScoresByRound = [];
+    this.seatClaims = {} as Record<PlayerId, string>;
+    this.setupStepByPlayerId = {};
+    this.pendingSetupBirdsKeptByPlayerId = {};
   }
 
   private ensureRoundGoalsInitialized(): void {
@@ -195,10 +200,14 @@ export class Game {
     this.refillBirdTray();
     this.dealStartingCards();
     this.phase = Phase.SETUP;
-
-    // Return first player's setup choices
-    this.waitingFor = this.getSetupInput(this.players[0]);
-    return this.waitingFor;
+    this.setupStepByPlayerId = {};
+    this.pendingSetupBirdsKeptByPlayerId = {};
+    for (const player of this.players) {
+      this.setupStepByPlayerId[player.id] = 'birds';
+      this.pendingSetupBirdsKeptByPlayerId[player.id] = 0;
+    }
+    this.waitingFor = null;
+    return undefined;
   }
 
   /** Deal starting hands: 5 bird cards + 5 food + 2 bonus cards per player. */
@@ -265,6 +274,8 @@ export class Game {
   handleSetupChoice(playerId: PlayerId, keptBirds: BirdCardName[]): PlayerInputModel | undefined {
     const player = this.getPlayer(playerId);
     if (!player) throw new Error(`Player ${playerId} not found`);
+    if (this.phase !== Phase.SETUP) throw new Error('Not in setup phase');
+    if (this.setupStepByPlayerId[playerId] !== 'birds') throw new Error('Not waiting for bird selection');
 
     // Remove birds not kept
     const discarded = player.hand.filter(c => !keptBirds.includes(c));
@@ -274,17 +285,12 @@ export class Game {
     }
 
     // Store how many birds were kept so we know the food cost later
-    this.pendingSetupBirdsKept = keptBirds.length;
+    this.pendingSetupBirdsKeptByPlayerId[playerId] = keptBirds.length;
 
     // If the player has 2+ bonus cards, ask them to pick 1
     if (player.bonusCards.length > 1) {
-      this.waitingFor = {
-        type: InputType.SELECT_BONUS_CARD,
-        availableBonusCards: [...player.bonusCards],
-        min: 1,
-        max: 1,
-      };
-      return this.waitingFor;
+      this.setupStepByPlayerId[playerId] = 'bonus';
+      return this.getSetupInputForPlayer(player);
     }
 
     return this.proceedToFoodSelection(player);
@@ -294,6 +300,8 @@ export class Game {
   handleBonusCardChoice(playerId: PlayerId, keptBonusCards: BonusCardName[]): PlayerInputModel | undefined {
     const player = this.getPlayer(playerId);
     if (!player) throw new Error(`Player ${playerId} not found`);
+    if (this.phase !== Phase.SETUP) throw new Error('Not in setup phase');
+    if (this.setupStepByPlayerId[playerId] !== 'bonus') throw new Error('Not waiting for bonus selection');
 
     // Remove bonus cards not kept
     player.bonusCards = player.bonusCards.filter(c => keptBonusCards.includes(c));
@@ -303,48 +311,81 @@ export class Game {
 
   /** After birds and bonus card selection, handle food discard. */
   private proceedToFoodSelection(player: Player): PlayerInputModel | undefined {
-    const foodToDiscard = this.pendingSetupBirdsKept;
+    const foodToDiscard = this.pendingSetupBirdsKeptByPlayerId[player.id] ?? 0;
     const foodToKeep = STARTING_FOOD_COUNT - foodToDiscard;
 
     // If they need to discard food, ask them
     if (foodToDiscard > 0 && player.food.length > foodToKeep) {
-      this.waitingFor = {
-        type: InputType.SELECT_STARTING_FOOD,
-        availableFood: [...player.food],
-        count: foodToKeep,
-      };
-      return this.waitingFor;
+      this.setupStepByPlayerId[player.id] = 'food';
+      return this.getSetupInputForPlayer(player);
     }
 
-    // Move to next player's setup or start the game
-    return this.advanceSetup();
+    return this.markSetupDone(player.id);
   }
 
   /** Handle a player's starting food selection. */
   handleStartingFoodChoice(playerId: PlayerId, keptFood: FoodType[]): PlayerInputModel | undefined {
     const player = this.getPlayer(playerId);
     if (!player) throw new Error(`Player ${playerId} not found`);
+    if (this.phase !== Phase.SETUP) throw new Error('Not in setup phase');
+    if (this.setupStepByPlayerId[playerId] !== 'food') throw new Error('Not waiting for starting food selection');
 
     player.food = [...keptFood];
 
-    return this.advanceSetup();
+    return this.markSetupDone(playerId);
   }
 
-  /** Advance to the next player's setup, or start round 1. */
-  private advanceSetup(): PlayerInputModel | undefined {
-    this.currentPlayerIndex++;
-    if (this.currentPlayerIndex < this.players.length) {
-      this.waitingFor = this.getSetupInput(this.players[this.currentPlayerIndex]);
-      return this.waitingFor;
+  /** Get setup input currently expected for a specific player. */
+  private getSetupInputForPlayer(player: Player): PlayerInputModel | undefined {
+    const step = this.setupStepByPlayerId[player.id] ?? 'birds';
+    if (step === 'birds') {
+      return this.getSetupInput(player);
     }
-    // All players done with setup — start round 1
-    this.currentPlayerIndex = 0;
-    return this.startRound();
+    if (step === 'bonus') {
+      const bonusCardDetails = player.bonusCards
+        .map((name) => {
+          const card = createBonusCard(name);
+          return card ? card.toClientCard(player) : undefined;
+        })
+        .filter((c): c is NonNullable<typeof c> => !!c);
+      return {
+        type: InputType.SELECT_BONUS_CARD,
+        availableBonusCards: [...player.bonusCards],
+        bonusCardDetails,
+        message: 'Select 1 bonus card to keep.',
+        min: 1,
+        max: 1,
+      };
+    }
+    if (step === 'food') {
+      const foodToDiscard = this.pendingSetupBirdsKeptByPlayerId[player.id] ?? 0;
+      const foodToKeep = STARTING_FOOD_COUNT - foodToDiscard;
+      return {
+        type: InputType.SELECT_STARTING_FOOD,
+        availableFood: [...player.food],
+        count: foodToKeep,
+      };
+    }
+    return undefined;
+  }
+
+  /** Mark one player's setup complete; start round 1 once everyone is done. */
+  private markSetupDone(playerId: PlayerId): PlayerInputModel | undefined {
+    this.setupStepByPlayerId[playerId] = 'done';
+    this.pendingSetupBirdsKeptByPlayerId[playerId] = 0;
+    this.waitingFor = null;
+
+    const allDone = this.players.every((p) => this.setupStepByPlayerId[p.id] === 'done');
+    if (allDone) {
+      this.currentPlayerIndex = 0;
+      return this.startRound();
+    }
+
+    return undefined;
   }
 
   // =========================================================================
   // Round Management
-  // =========================================================================
 
   /** Start a new round. */
   startRound(): PlayerInputModel | undefined {
@@ -499,6 +540,24 @@ export class Game {
     const currentDeferred = this.deferredActions.getCurrentAction();
     if (!currentDeferred) return true;
     return !currentDeferred.isCancellationLocked();
+  }
+
+  isPlayerPendingSetup(playerId: PlayerId): boolean {
+    if (this.phase !== Phase.SETUP) return false;
+    const step = this.setupStepByPlayerId[playerId];
+    return !!step && step !== 'done';
+  }
+
+  getWaitingForPlayer(playerId: PlayerId): PlayerInputModel | null {
+    if (this.phase === Phase.SETUP) {
+      const player = this.getPlayer(playerId);
+      if (!player) return null;
+      return this.getSetupInputForPlayer(player) ?? null;
+    }
+
+    const expectedPlayerId = this.getExpectedInputPlayerId();
+    if (expectedPlayerId !== playerId) return null;
+    return this.waitingFor;
   }
 
   /** Which player's input is currently expected. */
@@ -888,17 +947,60 @@ export class Game {
   // View Model
   // =========================================================================
 
+  claimSeat(playerId: PlayerId, deviceId: string): void {
+    if (!deviceId) {
+      throw new Error('deviceId is required');
+    }
+    const player = this.getPlayer(playerId);
+    if (!player) {
+      throw new Error('Player not found');
+    }
+
+    const existingByDevice = this.getPlayerIdForDevice(deviceId);
+    if (existingByDevice && existingByDevice !== playerId) {
+      throw new Error('This device is already assigned to a different player');
+    }
+
+    const existingClaim = this.seatClaims[playerId];
+    if (existingClaim && existingClaim !== deviceId) {
+      throw new Error('That player is already assigned on another device');
+    }
+
+    this.seatClaims[playerId] = deviceId;
+  }
+
+  getPlayerIdForDevice(deviceId?: string): PlayerId | null {
+    if (!deviceId) return null;
+    for (const player of this.players) {
+      if (this.seatClaims[player.id] === deviceId) {
+        return player.id;
+      }
+    }
+    return null;
+  }
+
+  isSeatClaimedByDevice(playerId: PlayerId, deviceId?: string): boolean {
+    if (!deviceId) return false;
+    return this.seatClaims[playerId] === deviceId;
+  }
+
   /** Get the game view model for the client. */
   toViewModel(viewerPlayerId?: PlayerId): GameViewModel {
     this.ensureRoundGoalsInitialized();
     const viewerId = viewerPlayerId ?? this.getExpectedInputPlayerId();
+    const waitingFor = this.players.some((p) => p.id === viewerId)
+      ? this.getWaitingForPlayer(viewerId)
+      : null;
+    const playersView = this.phase === Phase.GAME_END
+      ? this.players.map((p) => p.toViewModel(p.id))
+      : this.players.map((p) => p.toViewModel(viewerId));
     return {
       id: this.id,
       phase: this.phase,
       round: this.round,
       currentPlayerId: this.currentPlayer.id,
       expectedInputPlayerId: this.getExpectedInputPlayerId(),
-      players: this.players.map(p => p.toViewModel(viewerId)),
+      players: playersView,
       birdfeeder: {
         dice: this.birdfeeder.getAvailableDice().map(d => ({ foods: [...d.face.foods] })),
       },
@@ -933,9 +1035,15 @@ export class Game {
           points,
         })),
       })),
-      waitingFor: this.waitingFor,
+      waitingFor,
       canCancel: this.canCancelCurrentInput(),
       options: this.options,
+      seatStatus: this.players.map((p) => ({
+        playerId: p.id,
+        playerName: p.name,
+        claimed: !!this.seatClaims[p.id],
+      })),
+      viewerPlayerId: this.players.some((p) => p.id === viewerId) ? viewerId : null,
     };
   }
 
@@ -960,6 +1068,9 @@ export class Game {
       roundGoalTileIds: this.roundGoalTiles.map(goal => goal.id),
       roundGoalScores: this.roundGoalScoresByRound.map(scores => [...scores]),
       options: this.options,
+      seatClaims: { ...this.seatClaims },
+      setupStepByPlayerId: { ...this.setupStepByPlayerId },
+      pendingSetupBirdsKeptByPlayerId: { ...this.pendingSetupBirdsKeptByPlayerId },
     };
   }
 
@@ -980,6 +1091,9 @@ export class Game {
         .filter((goal): goal is GoalTile => goal !== undefined);
     }
     game.roundGoalScoresByRound = (data.roundGoalScores ?? []).map(scores => [...scores]);
+    game.seatClaims = { ...(data.seatClaims ?? {}) } as Record<PlayerId, string>;
+    game.setupStepByPlayerId = { ...(data.setupStepByPlayerId ?? {}) };
+    game.pendingSetupBirdsKeptByPlayerId = { ...(data.pendingSetupBirdsKeptByPlayerId ?? {}) };
     game.ensureRoundGoalsInitialized();
     game.rebuildPowerListeners();
     game.restoreInputState();
@@ -1003,11 +1117,17 @@ export class Game {
       }
       this.waitingFor = { type: InputType.SELECT_ACTION, availableActions };
     } else if (this.phase === Phase.SETUP) {
-      this.waitingFor = this.getSetupInput(this.players[this.currentPlayerIndex]);
+      if (Object.keys(this.setupStepByPlayerId).length === 0) {
+        for (const player of this.players) {
+          this.setupStepByPlayerId[player.id] = 'birds';
+        }
+      }
+      this.waitingFor = null;
     }
     // GAME_END / other phases: waitingFor stays null
   }
 }
+
 
 
 

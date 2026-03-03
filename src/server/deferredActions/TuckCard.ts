@@ -70,9 +70,28 @@ export class TuckCard extends DeferredAction {
     return {
       type: InputType.SELECT_CARDS,
       availableCards: [...this.player.hand],
-      message: this.message,
+      message: this.promptMessage(),
       min: this.min,
       max: this.count,
     };
+  }
+
+  private promptMessage(): string | undefined {
+    const birdName = this.displayBirdName();
+    if (!this.message) {
+      return `${birdName}: tuck card(s) from your hand.`;
+    }
+    if (this.message.toLowerCase().includes(birdName.toLowerCase())) {
+      return this.message;
+    }
+    return `${birdName}: ${this.message}`;
+  }
+
+  private displayBirdName(): string {
+    return String(this.targetBird.name)
+      .toLowerCase()
+      .split('_')
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
   }
 }

@@ -26,6 +26,12 @@ export interface RoundGoalView {
   readonly scores: ReadonlyArray<{ playerId: PlayerId; points: number }>;
 }
 
+export interface SeatStatusView {
+  readonly playerId: PlayerId;
+  readonly playerName: string;
+  readonly claimed: boolean;
+}
+
 export interface GameViewModel {
   readonly id: GameId;
   readonly phase: Phase;
@@ -39,4 +45,6 @@ export interface GameViewModel {
   readonly waitingFor: PlayerInputModel | null;
   readonly canCancel: boolean;
   readonly options: GameOptions;
+  readonly seatStatus: ReadonlyArray<SeatStatusView>;
+  readonly viewerPlayerId: PlayerId | null;
 }

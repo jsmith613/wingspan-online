@@ -34,16 +34,28 @@ export function createGame(playerNames: string[], options?: GameOptions): Promis
   });
 }
 
-export function getGameState(gameId: GameId): Promise<GameViewModel> {
-  return request(`${BASE_URL}/game/${gameId}`);
+export function getGameState(gameId: GameId, deviceId?: string): Promise<GameViewModel> {
+  const query = deviceId ? `?deviceId=${encodeURIComponent(deviceId)}` : '';
+  return request(`${BASE_URL}/game/${gameId}${query}`);
+}
+
+export function claimSeat(gameId: GameId, playerId: PlayerId, deviceId: string): Promise<{ ok: boolean; playerId: PlayerId }> {
+  return request(`${BASE_URL}/game/${gameId}/claim`, {
+    method: 'POST',
+    body: JSON.stringify({ playerId, deviceId }),
+  });
 }
 
 export function getWaitingFor(playerId: PlayerId): Promise<PlayerInputModel | null> {
   return request(`${BASE_URL}/player/${playerId}/waitingfor`);
 }
 
-export function submitInput(playerId: PlayerId, input: unknown): Promise<GameViewModel> {
-  return request(`${BASE_URL}/player/${playerId}/input`, {
+export function submitInput(playerId: PlayerId, input: unknown, gameId?: GameId, deviceId?: string): Promise<GameViewModel> {
+  const params = new URLSearchParams();
+  if (gameId) params.set('gameId', gameId);
+  if (deviceId) params.set('deviceId', deviceId);
+  const query = params.toString() ? `?${params.toString()}` : '';
+  return request(`${BASE_URL}/player/${playerId}/input${query}`, {
     method: 'POST',
     body: JSON.stringify(input),
   });

@@ -55,9 +55,47 @@ export function createApiRouter(db: IDatabase): Router {
         res.status(404).json({ error: 'Game not found' });
         return;
       }
-      res.json(game.toViewModel());
+      const deviceId = req.query.deviceId as string | undefined;
+
+      // Viewer identity is determined by seat claim on this device.
+      const claimedViewerId = game.getPlayerIdForDevice(deviceId);
+      const viewerId = (claimedViewerId ?? '__spectator__') as any;
+      const vm = game.toViewModel(viewerId);
+      const waitingFor = claimedViewerId ? game.getWaitingForPlayer?.(claimedViewerId) : null;
+      (vm as any).waitingFor = waitingFor ?? null;
+
+      res.json(vm);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
+    }
+  });
+
+  /** POST /api/game/:id/claim - Claim a player seat for this device */
+  router.post('/game/:id/claim', (req: Request, res: Response) => {
+    try {
+      const gameId = req.params.id as GameId;
+      const game = getGame(gameId, db);
+      if (!game) {
+        res.status(404).json({ error: 'Game not found' });
+        return;
+      }
+
+      const { playerId, deviceId } = req.body as { playerId?: string; deviceId?: string };
+      if (!playerId || !deviceId) {
+        res.status(400).json({ error: 'playerId and deviceId are required' });
+        return;
+      }
+
+      game.claimSeat(playerId as any, deviceId);
+      saveGame(game, db);
+      res.json({ ok: true, playerId });
+    } catch (err: any) {
+      const msg = String(err?.message || 'Unknown error');
+      if (msg.includes('already assigned')) {
+        res.status(409).json({ error: msg });
+        return;
+      }
+      res.status(500).json({ error: msg });
     }
   });
 

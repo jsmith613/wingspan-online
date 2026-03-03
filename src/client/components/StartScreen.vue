@@ -42,6 +42,22 @@
         @click="startGame"
       >Start Game</button>
 
+      <a
+        class="source-link"
+        href="https://github.com/jsmith613/wingspan-online"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="View source code on GitHub"
+        title="View source code on GitHub"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="github-icon">
+          <path
+            fill="currentColor"
+            d="M12 0.3C5.4 0.3 0 5.7 0 12.4c0 5.3 3.4 9.8 8.2 11.4c0.6 0.1 0.8-0.3 0.8-0.6c0-0.3 0-1.1 0-2.1c-3.3 0.7-4-1.6-4-1.6c-0.5-1.4-1.3-1.8-1.3-1.8c-1.1-0.8 0.1-0.8 0.1-0.8c1.2 0.1 1.9 1.3 1.9 1.3c1.1 1.9 2.9 1.4 3.6 1.1c0.1-0.8 0.4-1.4 0.8-1.7c-2.7-0.3-5.6-1.4-5.6-6.2c0-1.4 0.5-2.5 1.3-3.3c-0.1-0.3-0.6-1.6 0.1-3.2c0 0 1.1-0.4 3.5 1.3c1-0.3 2.1-0.5 3.2-0.5s2.2 0.2 3.2 0.5c2.4-1.7 3.5-1.3 3.5-1.3c0.7 1.6 0.2 2.9 0.1 3.2c0.8 0.9 1.3 2 1.3 3.3c0 4.8-2.9 5.9-5.6 6.2c0.4 0.4 0.8 1.1 0.8 2.3c0 1.7 0 3 0 3.4c0 0.3 0.2 0.7 0.8 0.6c4.8-1.6 8.2-6.1 8.2-11.4C24 5.7 18.6 0.3 12 0.3z"
+          />
+        </svg>
+      </a>
+
       <p v-if="error" class="error-text">{{ error }}</p>
     </div>
   </div>
@@ -103,6 +119,8 @@ export default defineComponent({
   text-align: center;
   max-width: 480px;
   width: 100%;
+  position: relative;
+  padding-bottom: $space-xl;
 }
 
 .game-title {
@@ -198,6 +216,28 @@ export default defineComponent({
 .start-btn {
   padding: $space-md $space-xxl;
   font-size: $font-size-lg;
+}
+
+.source-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  right: $space-md;
+  bottom: $space-md;
+  color: $color-text-light;
+  text-decoration: none;
+  opacity: 0.9;
+
+  &:hover {
+    color: $color-forest;
+    opacity: 1;
+  }
+}
+
+.github-icon {
+  width: 20px;
+  height: 20px;
 }
 
 .error-text {

@@ -5,6 +5,7 @@ import { HabitatType } from '../game/HabitatType';
 import { BirdCardName } from '../cards/BirdCardName';
 import { BonusCardName } from '../cards/BonusCardName';
 import { ClientBirdCard } from '../cards/ClientBirdCard';
+import { ClientBonusCard } from '../cards/ClientBonusCard';
 
 export interface SelectActionInput {
   readonly type: InputType.SELECT_ACTION;
@@ -80,6 +81,8 @@ export interface SelectBirdToKeepInput {
 export interface SelectBonusCardInput {
   readonly type: InputType.SELECT_BONUS_CARD;
   readonly availableBonusCards: ReadonlyArray<BonusCardName>;
+  readonly bonusCardDetails?: ReadonlyArray<ClientBonusCard>;
+  readonly message?: string;
   readonly min: number;
   readonly max: number;
 }

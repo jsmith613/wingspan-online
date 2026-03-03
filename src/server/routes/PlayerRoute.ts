@@ -19,30 +19,62 @@ export function registerPlayerGameMapping(playerIds: PlayerId[], gameId: GameId)
 export function createPlayerRouter(db: IDatabase): Router {
   const router = Router();
 
+  function buildViewerGameView(game: any, req: Request) {
+    const deviceId = req.query.deviceId as string | undefined;
+    const viewerPlayerId = game.getPlayerIdForDevice?.(deviceId) || null;
+    const vm = game.toViewModel(viewerPlayerId || undefined);
+    const waitingFor = viewerPlayerId ? game.getWaitingForPlayer?.(viewerPlayerId) : null;
+    (vm as any).waitingFor = waitingFor ?? null;
+    return vm;
+  }
+
+  function resolveGameForPlayer(req: Request, playerId: PlayerId) {
+    let gameId = playerGameMap.get(playerId);
+
+    // Recovery path: after server restart, in-memory map is empty.
+    // If client provides gameId, validate and rebuild mapping.
+    if (!gameId) {
+      const queryGameId = req.query.gameId as string | undefined;
+      if (queryGameId) {
+        const game = getGame(queryGameId as GameId, db);
+        if (game && game.players.some((p) => p.id === playerId)) {
+          registerPlayerGameMapping(game.players.map((p) => p.id), queryGameId as GameId);
+          gameId = queryGameId as GameId;
+        }
+      }
+    }
+
+    if (!gameId) {
+      return null;
+    }
+
+    const game = getGame(gameId, db);
+    if (!game) {
+      return null;
+    }
+
+    return { gameId, game };
+  }
+
   /** GET /api/player/:id/waitingfor - Get pending input request for player */
   router.get('/:id/waitingfor', (req: Request, res: Response) => {
     try {
       const playerId = req.params.id as PlayerId;
-      const gameId = playerGameMap.get(playerId);
-      if (!gameId) {
+      const resolved = resolveGameForPlayer(req, playerId);
+      if (!resolved) {
         res.status(404).json({ error: 'Player not found' });
         return;
       }
 
-      const game = getGame(gameId, db);
-      if (!game) {
-        res.status(404).json({ error: 'Game not found' });
+      const { game } = resolved;
+      const deviceId = req.query.deviceId as string | undefined;
+      if (!game.isSeatClaimedByDevice(playerId, deviceId)) {
+        res.status(403).json({ error: 'This device is not assigned to that player' });
         return;
       }
 
-      const vm = game.toViewModel();
-      // Return waitingFor only to the player whose input is currently expected.
-      const expectedPlayerId = game.getExpectedInputPlayerId();
-      if (vm.waitingFor && expectedPlayerId === playerId) {
-        res.json(vm.waitingFor);
-      } else {
-        res.json(null);
-      }
+      const waitingFor = game.getWaitingForPlayer?.(playerId) ?? null;
+      res.json(waitingFor);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -52,30 +84,24 @@ export function createPlayerRouter(db: IDatabase): Router {
   router.post('/:id/input', (req: Request, res: Response) => {
     try {
       const playerId = req.params.id as PlayerId;
-      const gameId = playerGameMap.get(playerId);
-      if (!gameId) {
+      const resolved = resolveGameForPlayer(req, playerId);
+      if (!resolved) {
         res.status(404).json({ error: 'Player not found' });
         return;
       }
 
-      const game = getGame(gameId, db);
-      if (!game) {
-        res.status(404).json({ error: 'Game not found' });
+      const { game } = resolved;
+      const deviceId = req.query.deviceId as string | undefined;
+      if (!game.isSeatClaimedByDevice(playerId, deviceId)) {
+        res.status(403).json({ error: 'This device is not assigned to that player' });
         return;
       }
 
       const input = req.body;
-      const vm = game.toViewModel();
-      const waitingFor = vm.waitingFor;
+      const waitingFor = game.getWaitingForPlayer?.(playerId) ?? null;
 
       if (!waitingFor) {
         res.status(400).json({ error: 'No input expected' });
-        return;
-      }
-
-      const expectedPlayerId = game.getExpectedInputPlayerId();
-      if (expectedPlayerId !== playerId) {
-        res.status(400).json({ error: 'Not waiting for this player input' });
         return;
       }
 
@@ -91,7 +117,7 @@ export function createPlayerRouter(db: IDatabase): Router {
           game.handleCancelAction(playerId);
         }
         saveGame(game, db);
-        res.json(game.toViewModel());
+        res.json(buildViewerGameView(game, req));
         return;
       }
 
@@ -101,7 +127,7 @@ export function createPlayerRouter(db: IDatabase): Router {
       // Save game state after processing
       saveGame(game, db);
 
-      res.json(game.toViewModel());
+      res.json(buildViewerGameView(game, req));
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

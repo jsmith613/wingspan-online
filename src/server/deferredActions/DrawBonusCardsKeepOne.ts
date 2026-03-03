@@ -4,6 +4,7 @@ import { PlayerInputModel } from '../../common/input/PlayerInputModel';
 import type { Game } from '../Game';
 import type { Player } from '../Player';
 import { DeferredAction, ActionPriority } from './DeferredAction';
+import { createBonusCard } from '../cards/createCard';
 
 /**
  * Draw N bonus cards and keep K of them.
@@ -61,12 +62,18 @@ export class DrawBonusCardsKeepOne extends DeferredAction {
   }
 
   private buildPrompt(): PlayerInputModel {
+    const bonusCardDetails = this.drawnCards.map((name) => {
+      const card = createBonusCard(name);
+      return card ? card.toClientCard(this.player) : undefined;
+    }).filter((c): c is NonNullable<typeof c> => !!c);
+
     return {
       type: InputType.SELECT_BONUS_CARD,
       availableBonusCards: [...this.drawnCards],
+      bonusCardDetails,
+      message: `Select ${this.keepCount} bonus card${this.keepCount > 1 ? 's' : ''} to keep.`,
       min: this.keepCount,
       max: this.keepCount,
     };
   }
 }
-

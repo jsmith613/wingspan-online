@@ -6,7 +6,7 @@ import { HabitatType } from '../../../common/game/HabitatType';
 import { PowerType } from '../../../common/game/PowerType';
 import type { Player } from '../../Player';
 import type { Game } from '../../Game';
-import { DrawCards } from '../../deferredActions/DrawCards';
+import { DiscardEggToDrawCards } from '../../deferredActions/DiscardEggToDrawCards';
 
 export class Killdeer extends BirdCard {
   readonly name = BirdCardName.KILLDEER;
@@ -22,9 +22,8 @@ export class Killdeer extends BirdCard {
   readonly powerText = 'Discard 1 egg to draw 2 card.';
 
   onActivate(player: Player, game: Game): void {
-    const birds = player.board.getAllBirds().filter(b => b.eggs > 0);
-    if (birds.length === 0) return;
-    birds[0].eggs--;
-    game.deferredActions.push(new DrawCards(player, 2));
+    game.deferredActions.push(
+      new DiscardEggToDrawCards(player, 2, 'Optional: discard 1 egg to draw 2 cards, or skip.'),
+    );
   }
 }

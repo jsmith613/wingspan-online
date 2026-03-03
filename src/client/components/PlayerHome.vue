@@ -11,9 +11,9 @@
         <span class="phase-badge">{{ game.phase }}</span>
       </div>
       <div class="header-center">
-        <h2>{{ currentPlayer.name }}'s Turn</h2>
+        <h2>{{ activeTurnPlayer.name }}'s Turn</h2>
         <span class="cubes-info">
-          {{ currentPlayer.actionCubes }} actions left
+          {{ activeTurnPlayer.actionCubes }} actions left
           <template v-if="isViewingOther"> | Viewing {{ viewedPlayer.name }}'s Board</template>
         </span>
       </div>
@@ -32,7 +32,7 @@
         v-for="player in game.players"
         :key="player.id"
         class="player-tab"
-        :class="{ active: player.id === viewedPlayer.id, self: player.id === currentPlayer.id }"
+        :class="{ active: player.id === viewedPlayer.id, self: player.id === selfPlayer.id }"
         @click="setViewedPlayer(player.id)"
       >
         {{ player.name }}
@@ -118,7 +118,7 @@
       </div>
       <div v-if="game.options?.showVpTotals" class="stash-score">
         <h4 class="stash-label">Victory Points</h4>
-        <span class="vp-total">{{ isViewingOther ? '?' : currentPlayer.score }}</span>
+        <span class="vp-total">{{ isViewingOther ? '?' : selfPlayer.score }}</span>
       </div>
       <div v-if="bonusCards.length > 0 && !isViewingOther" class="stash-bonus">
         <h4 class="stash-label">Bonus Cards</h4>
@@ -210,17 +210,20 @@ export default defineComponent({
     };
   },
   computed: {
-    currentPlayer(): PlayerViewModel {
+    selfPlayer(): PlayerViewModel {
       return this.game.players.find((p) => p.id === this.playerId) || this.game.players[0];
+    },
+    activeTurnPlayer(): PlayerViewModel {
+      return this.game.players.find((p) => p.id === this.game.currentPlayerId) || this.game.players[0];
     },
     viewedPlayer(): PlayerViewModel {
       const selected = this.viewedPlayerId
         ? this.game.players.find((p) => p.id === this.viewedPlayerId)
         : null;
-      return selected || this.currentPlayer;
+      return selected || this.selfPlayer;
     },
     isViewingOther(): boolean {
-      return this.viewedPlayer.id !== this.currentPlayer.id;
+      return this.viewedPlayer.id !== this.selfPlayer.id;
     },
     viewedPlayerColor(): string {
       return colorForPlayer(this.game.players, this.viewedPlayer.id);
@@ -238,10 +241,10 @@ export default defineComponent({
       };
     },
     handCards(): ClientBirdCard[] {
-      return [...(this.currentPlayer.handDetails || [])];
+      return [...(this.selfPlayer.handDetails || [])];
     },
     bonusCards(): ClientBonusCard[] {
-      return [...(this.currentPlayer.bonusCardDetails || [])];
+      return [...(this.selfPlayer.bonusCardDetails || [])];
     },
     bonusHoverStyle(): Record<string, string> {
       if (!this.hoveredBonusCard) return { display: 'none' };

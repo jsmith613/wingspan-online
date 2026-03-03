@@ -33,4 +33,7 @@ export interface SerializedGame {
   roundGoalTileIds?: string[];
   roundGoalScores?: number[][];
   options?: GameOptions;
+  seatClaims?: Record<PlayerId, string>;
+  setupStepByPlayerId?: Partial<Record<PlayerId, 'birds' | 'bonus' | 'food' | 'done'>>;
+  pendingSetupBirdsKeptByPlayerId?: Partial<Record<PlayerId, number>>;
 }

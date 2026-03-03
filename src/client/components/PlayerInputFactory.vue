@@ -78,6 +78,8 @@
     <SelectCards
       v-else-if="input.type === 'SELECT_BONUS_CARD'"
       :available-cards="input.availableBonusCards"
+      :bonus-card-details="input.bonusCardDetails || []"
+      :message="input.message || ''"
       :min="input.min"
       :max="input.max"
       @submit="(v) => $emit('submit', { type: 'SELECT_BONUS_CARD', selectedBonusCards: v.selectedCards })"
