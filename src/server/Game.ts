@@ -889,15 +889,16 @@ export class Game {
   // =========================================================================
 
   /** Get the game view model for the client. */
-  toViewModel(): GameViewModel {
+  toViewModel(viewerPlayerId?: PlayerId): GameViewModel {
     this.ensureRoundGoalsInitialized();
+    const viewerId = viewerPlayerId ?? this.getExpectedInputPlayerId();
     return {
       id: this.id,
       phase: this.phase,
       round: this.round,
       currentPlayerId: this.currentPlayer.id,
       expectedInputPlayerId: this.getExpectedInputPlayerId(),
-      players: this.players.map(p => p.toViewModel()),
+      players: this.players.map(p => p.toViewModel(viewerId)),
       birdfeeder: {
         dice: this.birdfeeder.getAvailableDice().map(d => ({ foods: [...d.face.foods] })),
       },

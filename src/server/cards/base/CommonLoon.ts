@@ -6,7 +6,7 @@ import { HabitatType } from '../../../common/game/HabitatType';
 import { PowerType } from '../../../common/game/PowerType';
 import type { Player } from '../../Player';
 import type { Game } from '../../Game';
-import { DrawCards } from '../../deferredActions/DrawCards';
+import { FewestWetlandPlayersDraw } from '../../deferredActions/FewestWetlandPlayersDraw';
 
 export class CommonLoon extends BirdCard {
   readonly name = BirdCardName.COMMON_LOON;
@@ -21,14 +21,7 @@ export class CommonLoon extends BirdCard {
   readonly powerType = PowerType.BROWN;
   readonly powerText = 'Player(s) with the fewest birds in their wetland draw 1 card.';
 
-  onActivate(_player: Player, game: Game): void {
-    const players = game.getPlayers();
-    const minBirds = Math.min(...players.map(p => p.board.getBirdCount(HabitatType.WETLAND)));
-    for (const p of players) {
-      if (p.board.getBirdCount(HabitatType.WETLAND) === minBirds) {
-        const card = game.drawFromDeck();
-        if (card) p.addCardToHand(card);
-      }
-    }
+  onActivate(player: Player, game: Game): void {
+    game.deferredActions.push(new FewestWetlandPlayersDraw(player, 1, this.powerText));
   }
 }

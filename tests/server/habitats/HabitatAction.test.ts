@@ -23,22 +23,27 @@ describe('HabitatAction brown powers', () => {
       cachedFood: 0,
       tuckedCards: 0,
     });
+    player.addCardToHand(BirdCardName.BOBOLINK);
 
     executeHabitatAction(player, HabitatType.GRASSLAND, game);
 
     const baseInput = game.deferredActions.runUntilInput(game) as any;
     expect(baseInput.type).toBe(InputType.SELECT_EGG_LOCATION);
     expect(baseInput.eggsToLay).toBe(3); // Grassland base at strength for 2 birds
-    game.deferredActions.handleInput(game, { placements: {} });
+    game.deferredActions.handleInput(game, { placements: { [BirdCardName.KILLDEER]: 1 } });
 
     const rightmostBrownInput = game.deferredActions.runUntilInput(game) as any;
-    expect(rightmostBrownInput.type).toBe(InputType.SELECT_EGG_LOCATION);
-    expect(rightmostBrownInput.eggsToLay).toBe(1); // American Robin first (rightmost)
-    game.deferredActions.handleInput(game, { placements: {} });
+    expect(rightmostBrownInput.type).toBe(InputType.SELECT_CARDS);
+    game.deferredActions.handleInput(game, { selectedCards: [] });
 
     const leftBrownInput = game.deferredActions.runUntilInput(game) as any;
-    expect(leftBrownInput.type).toBe(InputType.SELECT_EGG_LOCATION);
-    expect(leftBrownInput.eggsToLay).toBe(2); // Killdeer second (left)
+    expect(leftBrownInput.type).toBe(InputType.SELECT_OPTION);
+    expect(leftBrownInput.options).toEqual(expect.arrayContaining(['DRAW_FROM_DECK']));
+    const secondDrawInput = game.deferredActions.handleInput(game, { selectedOption: 'DRAW_FROM_DECK' }) as any;
+    expect(secondDrawInput.type).toBe(InputType.SELECT_OPTION);
+    expect(secondDrawInput.options).toEqual(expect.arrayContaining(['DRAW_FROM_DECK']));
+    game.deferredActions.handleInput(game, { selectedOption: 'DRAW_FROM_DECK' });
+    expect(game.deferredActions.runUntilInput(game)).toBeUndefined();
   });
 
   it('does not enqueue extra activations for non-brown birds', () => {
@@ -46,13 +51,13 @@ describe('HabitatAction brown powers', () => {
     const player = game.players[0];
 
     player.board.placeBird(HabitatType.GRASSLAND, {
-      name: BirdCardName.DARK_EYED_JUNCO,
+      name: BirdCardName.BOBOLINK,
       eggs: 0,
       cachedFood: 0,
       tuckedCards: 0,
     });
     player.board.placeBird(HabitatType.GRASSLAND, {
-      name: BirdCardName.HOUSE_FINCH,
+      name: BirdCardName.EASTERN_BLUEBIRD,
       eggs: 0,
       cachedFood: 0,
       tuckedCards: 0,

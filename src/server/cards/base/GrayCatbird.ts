@@ -6,6 +6,8 @@ import { HabitatType } from '../../../common/game/HabitatType';
 import { PowerType } from '../../../common/game/PowerType';
 import type { Player } from '../../Player';
 import type { Game } from '../../Game';
+import type { BrownPowerContext } from '../BirdCard';
+import { RepeatBrownPowerInHabitat } from '../../deferredActions/RepeatBrownPowerInHabitat';
 
 export class GrayCatbird extends BirdCard {
   readonly name = BirdCardName.GRAY_CATBIRD;
@@ -20,8 +22,16 @@ export class GrayCatbird extends BirdCard {
   readonly powerType = PowerType.BROWN;
   readonly powerText = 'Repeat a brown power on another bird in this habitat.';
 
-  // TODO: Complex power - requires additional UI interaction
-  onActivate(_player: Player, _game: Game): void {
-    // Repeat a brown power on another bird in this habitat.
+  onActivate(player: Player, game: Game, context?: BrownPowerContext): void {
+    const sourceHabitat = context?.habitat;
+    const sourceSlot = context?.slotIndex;
+    if (sourceHabitat === undefined || sourceSlot === undefined) return;
+    game.deferredActions.push(new RepeatBrownPowerInHabitat(
+      player,
+      sourceHabitat,
+      sourceSlot,
+      'ANY_BROWN',
+      this.powerText,
+    ));
   }
 }

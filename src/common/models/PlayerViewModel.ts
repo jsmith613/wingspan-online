@@ -20,6 +20,8 @@ export interface PlayerViewModel {
   readonly id: PlayerId;
   readonly name: string;
   readonly actionCubes: number;
+  readonly handCount: number;
+  readonly bonusCardCount: number;
   readonly hand: ReadonlyArray<BirdCardName>;
   readonly handDetails: ReadonlyArray<ClientBirdCard>;
   readonly bonusCards: ReadonlyArray<BonusCardName>;

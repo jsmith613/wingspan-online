@@ -6,6 +6,7 @@ import { HabitatType } from '../../../common/game/HabitatType';
 import { PowerType } from '../../../common/game/PowerType';
 import type { Player } from '../../Player';
 import type { Game } from '../../Game';
+import { AllPlayersGainFoodFromSupply } from '../../deferredActions/AllPlayersGainFoodFromSupply';
 
 export class Osprey extends BirdCard {
   readonly name = BirdCardName.OSPREY;
@@ -20,9 +21,7 @@ export class Osprey extends BirdCard {
   readonly powerType = PowerType.BROWN;
   readonly powerText = 'All players gain 1 fish from the supply.';
 
-  onActivate(_player: Player, game: Game): void {
-    for (const p of game.getPlayers()) {
-      p.addFood(FoodType.FISH);
-    }
+  onActivate(player: Player, game: Game): void {
+    game.deferredActions.push(new AllPlayersGainFoodFromSupply(player, FoodType.FISH, this.powerText));
   }
 }

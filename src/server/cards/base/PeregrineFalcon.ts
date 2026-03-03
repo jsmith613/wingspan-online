@@ -6,6 +6,7 @@ import { HabitatType } from '../../../common/game/HabitatType';
 import { PowerType } from '../../../common/game/PowerType';
 import type { Player } from '../../Player';
 import type { Game } from '../../Game';
+import { RevealDeckCardForTuckThreshold } from '../../deferredActions/RevealDeckCardForTuckThreshold';
 
 export class PeregrineFalcon extends BirdCard {
   readonly name = BirdCardName.PEREGRINE_FALCON;
@@ -21,14 +22,13 @@ export class PeregrineFalcon extends BirdCard {
   readonly powerText = 'Look at a card from the deck. If less than 100cm, tuck it behind this bird. If not, discard it.';
 
   onActivate(player: Player, game: Game): void {
-    const card = game.drawFromDeck();
-    if (!card) return;
-    const birdCard = game.createBirdCardInstance(card);
-    if (birdCard && birdCard.wingspan < 100) {
-      const self = player.board.getAllBirds().find(b => b.name === this.name);
-      if (self) self.tuckedCards++;
-    } else {
-      game.discardBirdCard(card);
-    }
+    const self = player.board.getAllBirds().find(b => b.name === this.name);
+    if (!self) return;
+    game.deferredActions.push(new RevealDeckCardForTuckThreshold(
+      player,
+      self,
+      100,
+      this.commonName,
+    ));
   }
 }

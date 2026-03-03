@@ -12,12 +12,23 @@ import { GameEvent } from '../powers/PowerEventBus';
  */
 export class GainFood extends DeferredAction {
   private readonly count: number;
+  private readonly allowedFoods?: Set<FoodType>;
+  private readonly message?: string;
   private gained: number = 0;
   private rerolled: boolean = false;
 
-  constructor(player: Player, count: number) {
+  constructor(
+    player: Player,
+    count: number,
+    options?: {
+      allowedFoods?: ReadonlyArray<FoodType>;
+      message?: string;
+    },
+  ) {
     super(player, ActionPriority.GAIN);
     this.count = count;
+    this.allowedFoods = options?.allowedFoods ? new Set(options.allowedFoods) : undefined;
+    this.message = options?.message;
   }
 
   execute(game: Game): PlayerInputModel | undefined {
@@ -40,6 +51,9 @@ export class GainFood extends DeferredAction {
     const selectedFood: FoodType = Array.isArray(input.selectedFood)
       ? input.selectedFood[0]
       : (input.selectedFood || input);
+    if (this.allowedFoods && !this.allowedFoods.has(selectedFood)) {
+      return this.askForFood(game);
+    }
     const taken = game.birdfeeder.takeFood(selectedFood);
     if (taken !== null) {
       this.player.addFood(taken);
@@ -53,17 +67,20 @@ export class GainFood extends DeferredAction {
   }
 
   private askForFood(game: Game): PlayerInputModel | undefined {
-    const availableDice = game.birdfeeder.getAvailableDice();
+    const availableDice = game.birdfeeder.getAvailableDice()
+      .map(d => ({ foods: d.face.foods.filter(f => !this.allowedFoods || this.allowedFoods.has(f)) }))
+      .filter(d => d.foods.length > 0);
     if (availableDice.length === 0 || this.gained >= this.count) {
       return undefined;
     }
     return {
       type: InputType.SELECT_FOOD,
-      availableDice: availableDice.map(d => ({ foods: [...d.face.foods] })),
+      availableDice,
       canReroll: game.birdfeeder.canRerollByRule(),
       lockBack: this.rerolled,
       min: 1,
       max: 1,
+      message: this.message,
     };
   }
 

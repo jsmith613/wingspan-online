@@ -118,6 +118,9 @@ export function executeHabitatAction(
     const card = createBirdCard(placed.name as BirdCardName);
     if (!card || card.powerType !== PowerType.BROWN) continue;
 
-    game.deferredActions.push(new ActivateBrownPower(player, card));
+    game.deferredActions.push(new ActivateBrownPower(player, card, {
+      habitat,
+      slotIndex: i,
+    }));
   }
 }

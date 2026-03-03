@@ -1,13 +1,26 @@
 <template>
   <div class="input-panel panel">
     <h3>Select Food</h3>
-    <p class="input-hint">
+    <p v-if="!showBirdCostIcons" class="input-hint">
       {{ hintText }}
     </p>
+    <div v-else class="cost-requirement">
+      <p class="input-hint">Pay bird cost</p>
+      <div class="cost-icons">
+        <img
+          v-for="(food, idx) in normalizedRequiredCost"
+          :key="`${food}-${idx}`"
+          :src="getFoodIcon(food)"
+          :alt="food"
+          class="cost-icon"
+        />
+      </div>
+    </div>
     <p v-if="selections.length > 0" class="input-selection">
       Selected: {{ selectedSummary }}
     </p>
     <Birdfeeder
+      :title="feederTitle"
       :dice="availableDice"
       :selectable="true"
       :selected-indices="selectedDieIndices"
@@ -32,6 +45,7 @@
 import { defineComponent, PropType } from 'vue';
 import { FoodType } from '@common/game/FoodType';
 import Birdfeeder from '../birdfeeder/Birdfeeder.vue';
+import { FOOD_ICONS } from '../../utils/cardAssets';
 
 interface DieFace {
   foods: FoodType[];
@@ -132,8 +146,19 @@ export default defineComponent({
         .filter((token): token is FoodType => Object.values(FoodType).includes(token as FoodType));
     },
     hintText(): string {
-      if (this.message) return this.message;
+      if (this.message) {
+        if (this.showBirdCostIcons) {
+          return 'Pay bird cost';
+        }
+        return this.message;
+      }
       return `Choose ${this.min}${this.max !== this.min ? ` to ${this.max}` : ''} food from the birdfeeder`;
+    },
+    showBirdCostIcons(): boolean {
+      return this.normalizedRequiredCost.length > 0;
+    },
+    feederTitle(): string {
+      return this.normalizedRequiredCost.length > 0 ? 'Food in Hand' : 'Birdfeeder';
     },
     selectedDieIndices(): number[] {
       return this.selections.map(s => s.dieIndex);
@@ -177,6 +202,9 @@ export default defineComponent({
     },
   },
   methods: {
+    getFoodIcon(food: FoodType): string {
+      return FOOD_ICONS[food] || '';
+    },
     onSelect(dieIndex: number, food: FoodType) {
       const existing = this.selections.findIndex(s => s.dieIndex === dieIndex);
       if (existing >= 0) {
@@ -224,5 +252,21 @@ export default defineComponent({
   display: flex;
   gap: $space-sm;
   justify-content: center;
+}
+
+.cost-requirement {
+  margin-bottom: $space-md;
+}
+
+.cost-icons {
+  display: flex;
+  justify-content: center;
+  gap: $space-sm;
+}
+
+.cost-icon {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
 }
 </style>

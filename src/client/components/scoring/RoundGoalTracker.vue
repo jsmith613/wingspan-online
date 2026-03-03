@@ -39,6 +39,7 @@
                   :key="score.playerId"
                   class="player-marker"
                   :title="playerName(score.playerId)"
+                  :style="markerStyle(score.playerId)"
                 >
                   {{ playerInitial(score.playerId) }}
                 </span>
@@ -50,7 +51,7 @@
     </div>
     <div class="legend">
       <span v-for="p in players" :key="p.id" class="legend-item">
-        <span class="player-marker">{{ p.name.slice(0, 1).toUpperCase() }}</span>{{ p.name }}
+        <span class="player-marker" :style="markerStyle(p.id)">{{ p.name.slice(0, 1).toUpperCase() }}</span>{{ p.name }}
       </span>
     </div>
   </div>
@@ -65,6 +66,7 @@ import birdIcon from '../../assets/icons/bird.webp';
 import eggIcon from '../../assets/icons/egg.webp';
 import cardIcon from '../../assets/icons/card.webp';
 import { HABITAT_ICONS, NEST_ICONS, FOOD_ICONS } from '../../utils/cardAssets';
+import { colorForPlayer } from '../../utils/playerColors';
 
 type GoalToken = { kind: 'icon'; value: string } | { kind: 'text'; value: string };
 
@@ -89,6 +91,11 @@ export default defineComponent({
     },
     playerInitial(playerId: PlayerId): string {
       return this.playerName(playerId).slice(0, 1).toUpperCase();
+    },
+    markerStyle(playerId: PlayerId): Record<string, string> {
+      return {
+        background: colorForPlayer(this.players, playerId),
+      };
     },
     scoresForPoints(goal: RoundGoalView, points: number): Array<{ playerId: PlayerId; points: number }> {
       return goal.scores.filter(score => score.points === points);

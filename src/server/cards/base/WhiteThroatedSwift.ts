@@ -7,6 +7,7 @@ import { PowerType } from '../../../common/game/PowerType';
 import type { Player } from '../../Player';
 import type { Game } from '../../Game';
 import { LayEggs } from '../../deferredActions/LayEggs';
+import { TuckCard } from '../../deferredActions/TuckCard';
 
 export class WhiteThroatedSwift extends BirdCard {
   readonly name = BirdCardName.WHITE_THROATED_SWIFT;
@@ -22,13 +23,14 @@ export class WhiteThroatedSwift extends BirdCard {
   readonly powerText = 'Tuck 1 card from your hand behind this bird. If you do, lay 1 egg on any bird.';
 
   onActivate(player: Player, game: Game): void {
-    if (player.hand.length === 0) return;
     const self = player.board.getAllBirds().find(b => b.name === this.name);
     if (!self) return;
-    const card = player.hand.shift();
-    if (card) {
-      self.tuckedCards++;
-      game.deferredActions.push(new LayEggs(player, 1));
-    }
+    game.deferredActions.push(new TuckCard(player, {
+      targetBird: self,
+      message: 'Optional: tuck 1 card from your hand behind this bird, or skip.',
+      onTucked: () => {
+        game.deferredActions.push(new LayEggs(player, 1));
+      },
+    }));
   }
 }

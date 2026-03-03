@@ -6,6 +6,7 @@ import { HabitatType } from '../../../common/game/HabitatType';
 import { PowerType } from '../../../common/game/PowerType';
 import type { Player } from '../../Player';
 import type { Game } from '../../Game';
+import { PayFoodToTuckFromDeck } from '../../deferredActions/PayFoodToTuckFromDeck';
 
 export class AmericanWhitePelican extends BirdCard {
   readonly name = BirdCardName.AMERICAN_WHITE_PELICAN;
@@ -21,15 +22,8 @@ export class AmericanWhitePelican extends BirdCard {
   readonly powerText = 'Discard 1 fish to tuck 2 card from the deck behind this bird.';
 
   onActivate(player: Player, game: Game): void {
-    if (!player.removeFood(FoodType.FISH)) return;
     const self = player.board.getAllBirds().find(b => b.name === this.name);
     if (!self) return;
-    for (let i = 0; i < 2; i++) {
-      const card = game.drawFromDeck();
-      if (card) {
-        self.tuckedCards++;
-        game.discardBirdCard(card);
-      }
-    }
+    game.deferredActions.push(new PayFoodToTuckFromDeck(player, self, FoodType.FISH, 2, this.powerText));
   }
 }

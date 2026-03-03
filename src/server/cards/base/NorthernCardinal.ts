@@ -6,6 +6,7 @@ import { HabitatType } from '../../../common/game/HabitatType';
 import { PowerType } from '../../../common/game/PowerType';
 import type { Player } from '../../Player';
 import type { Game } from '../../Game';
+import { ConfirmSimpleBrownEffect } from '../../deferredActions/ConfirmSimpleBrownEffect';
 
 export class NorthernCardinal extends BirdCard {
   readonly name = BirdCardName.NORTHERN_CARDINAL;
@@ -20,7 +21,13 @@ export class NorthernCardinal extends BirdCard {
   readonly powerType = PowerType.BROWN;
   readonly powerText = 'Gain 1 fruit from the supply.';
 
-  onActivate(player: Player, _game: Game): void {
-    player.addFood(FoodType.FRUIT);
+  onActivate(player: Player, game: Game): void {
+    game.deferredActions.push(new ConfirmSimpleBrownEffect(
+      player,
+      this.powerText,
+      () => {
+        player.addFood(FoodType.FRUIT);
+      },
+    ));
   }
 }

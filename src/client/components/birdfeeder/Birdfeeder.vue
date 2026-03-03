@@ -1,6 +1,6 @@
 <template>
   <div class="birdfeeder panel">
-    <h3 class="feeder-title">Birdfeeder</h3>
+    <h3 class="feeder-title">{{ title }}</h3>
     <div class="feeder-dice">
       <div
         v-for="(die, i) in dice"
@@ -12,7 +12,6 @@
         <template v-if="die.foods.length === 1">
           <div class="die-face" @click="onDieClick(i, die.foods[0])">
             <img :src="foodIcon(die.foods[0])" :alt="die.foods[0]" class="food-img" />
-            <span class="die-label">{{ foodLabel(die.foods[0]) }}</span>
           </div>
         </template>
         <!-- Multi-choice die -->
@@ -26,7 +25,6 @@
               @click="onChoiceClick(i, food)"
             >
               <img :src="foodIcon(food)" :alt="food" class="food-img" />
-              <span class="die-label">{{ foodLabel(food) }}</span>
             </div>
             <span class="choice-divider">or</span>
           </div>
@@ -44,15 +42,6 @@ import { defineComponent, PropType } from 'vue';
 import { FoodType } from '@common/game/FoodType';
 import { FOOD_ICONS } from '../../utils/cardAssets';
 
-const FOOD_LABELS: Record<string, string> = {
-  [FoodType.INVERTEBRATE]: 'Worm',
-  [FoodType.SEED]: 'Seed',
-  [FoodType.FISH]: 'Fish',
-  [FoodType.FRUIT]: 'Fruit',
-  [FoodType.RODENT]: 'Rodent',
-  [FoodType.WILD]: 'Wild',
-};
-
 export interface DieFace {
   foods: FoodType[];
 }
@@ -63,6 +52,7 @@ export default defineComponent({
     dice: { type: Array as PropType<DieFace[]>, required: true },
     selectable: { type: Boolean, default: false },
     selectedIndices: { type: Array as PropType<number[]>, default: () => [] },
+    title: { type: String, default: 'Birdfeeder' },
   },
   emits: ['select'],
   data() {
@@ -71,9 +61,6 @@ export default defineComponent({
     };
   },
   methods: {
-    foodLabel(food: FoodType): string {
-      return FOOD_LABELS[food] || food;
-    },
     foodIcon(food: FoodType): string {
       return FOOD_ICONS[food] || '';
     },
@@ -151,11 +138,6 @@ export default defineComponent({
   width: 32px;
   height: 32px;
   object-fit: contain;
-}
-
-.die-label {
-  font-size: $font-size-xs;
-  color: $color-text-light;
 }
 
 .die-choice {

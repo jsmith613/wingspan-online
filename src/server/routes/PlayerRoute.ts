@@ -129,7 +129,11 @@ function routeInput(
 
     case InputType.SELECT_BONUS_CARD:
       // input: { selectedBonusCards: BonusCardName[] }
-      game.handleBonusCardChoice(playerId, input.selectedBonusCards || []);
+      if (hasDeferredAction) {
+        game.handleDeferredInput(playerId, input);
+      } else {
+        game.handleBonusCardChoice(playerId, input.selectedBonusCards || []);
+      }
       break;
 
     case InputType.SELECT_STARTING_FOOD:

@@ -22,6 +22,9 @@ export class WesternTanager extends BirdCard {
   readonly powerText = 'Gain 1 invertebrate or fruit from the birdfeeder, if available.';
 
   onActivate(player: Player, game: Game): void {
-    game.deferredActions.push(new GainFood(player, 1));
+    game.deferredActions.push(new GainFood(player, 1, {
+      allowedFoods: [FoodType.INVERTEBRATE, FoodType.FRUIT],
+      message: `${this.commonName}: Gain 1 invertebrate or fruit from the birdfeeder.`,
+    }));
   }
 }

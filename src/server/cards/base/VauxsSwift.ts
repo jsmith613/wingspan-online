@@ -6,6 +6,7 @@ import { HabitatType } from '../../../common/game/HabitatType';
 import { PowerType } from '../../../common/game/PowerType';
 import type { Player } from '../../Player';
 import type { Game } from '../../Game';
+import { TuckCard } from '../../deferredActions/TuckCard';
 
 export class VauxsSwift extends BirdCard {
   readonly name = BirdCardName.VAUXS_SWIFT;
@@ -21,13 +22,14 @@ export class VauxsSwift extends BirdCard {
   readonly powerText = 'Tuck 1 card from your hand behind this bird. If you do, gain 1 invertebrate from the supply.';
 
   onActivate(player: Player, _game: Game): void {
-    if (player.hand.length === 0) return;
     const self = player.board.getAllBirds().find(b => b.name === this.name);
     if (!self) return;
-    const card = player.hand.shift();
-    if (card) {
-      self.tuckedCards++;
-      player.addFood(FoodType.INVERTEBRATE);
-    }
+    _game.deferredActions.push(new TuckCard(player, {
+      targetBird: self,
+      message: 'Optional: tuck 1 card from your hand behind this bird, or skip.',
+      onTucked: () => {
+        player.addFood(FoodType.INVERTEBRATE);
+      },
+    }));
   }
 }

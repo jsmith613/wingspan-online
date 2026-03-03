@@ -185,15 +185,18 @@ export class Player {
   }
 
   /** Get the view model for this player (sent to client). */
-  toViewModel(): PlayerViewModel {
+  toViewModel(viewerPlayerId?: PlayerId): PlayerViewModel {
+    const isViewer = viewerPlayerId === this.id;
     return {
       id: this.id,
       name: this.name,
       actionCubes: this.actionCubes,
-      hand: [...this.hand],
-      handDetails: this.hand.map(name => this.buildClientCard(name)),
-      bonusCards: [...this.bonusCards],
-      bonusCardDetails: this.bonusCards.map(name => {
+      handCount: this.hand.length,
+      bonusCardCount: this.bonusCards.length,
+      hand: isViewer ? [...this.hand] : [],
+      handDetails: isViewer ? this.hand.map(name => this.buildClientCard(name)) : [],
+      bonusCards: isViewer ? [...this.bonusCards] : [],
+      bonusCardDetails: isViewer ? this.bonusCards.map(name => {
         const card = createBonusCard(name);
         if (card) return card.toClientCard(this);
         return {
@@ -204,7 +207,7 @@ export class Player {
           vpText: '',
           score: 0,
         };
-      }),
+      }) : [],
       food: [...this.food],
       board: {
         [HabitatType.FOREST]: this.buildHabitatView(HabitatType.FOREST),

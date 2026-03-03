@@ -4,6 +4,9 @@ import { FoodType } from '../../../common/game/FoodType';
 import { NestType } from '../../../common/game/NestType';
 import { HabitatType } from '../../../common/game/HabitatType';
 import { PowerType } from '../../../common/game/PowerType';
+import type { Player } from '../../Player';
+import type { Game } from '../../Game';
+import { DrawThenDiscardOne } from '../../deferredActions/DrawThenDiscardOne';
 
 export class PiedBilledGrebe extends BirdCard {
   readonly name = BirdCardName.PIED_BILLED_GREBE;
@@ -18,4 +21,7 @@ export class PiedBilledGrebe extends BirdCard {
   readonly powerType = PowerType.BROWN;
   readonly powerText = 'Draw 2 card. If you do, discard 1 card from your hand at the end of your turn.';
 
+  onActivate(player: Player, game: Game): void {
+    game.deferredActions.push(new DrawThenDiscardOne(player, 2, this.powerText));
+  }
 }

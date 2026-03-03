@@ -68,7 +68,11 @@ export class OptionalTrade extends DeferredAction {
 
     if (this.phase === 'pick-egg') {
       // Wetland trade step 1: player chose which bird — don't remove egg yet
-      this.pendingEggBird = selected;
+      if (selected.startsWith('TARGET:')) {
+        this.pendingEggBird = selected.split(':')[1] ?? null;
+      } else {
+        this.pendingEggBird = selected;
+      }
       return this.showWetlandCardSelection(game);
     }
 
@@ -176,7 +180,11 @@ export class OptionalTrade extends DeferredAction {
     this.phase = 'pick-egg';
     const birdsWithEggs = this.player.board.getAllBirds()
       .filter(b => b.eggs > 0)
-      .map(b => String(b.name));
+      .map((b) => {
+        const card = createBirdCard(b.name as BirdCardName);
+        const label = card?.commonName ?? String(b.name).replace(/_/g, ' ').replace(/\b\w/g, (ch: string) => ch.toUpperCase());
+        return `TARGET:${b.name}:${label}`;
+      });
     return {
       type: InputType.SELECT_OPTION,
       options: [...birdsWithEggs, SKIP],

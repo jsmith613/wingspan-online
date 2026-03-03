@@ -6,6 +6,7 @@ import { HabitatType } from '../../../common/game/HabitatType';
 import { PowerType } from '../../../common/game/PowerType';
 import type { Player } from '../../Player';
 import type { Game } from '../../Game';
+import { ConfirmSimpleBrownEffect } from '../../deferredActions/ConfirmSimpleBrownEffect';
 
 export class ScaledQuail extends BirdCard {
   readonly name = BirdCardName.SCALED_QUAIL;
@@ -20,10 +21,20 @@ export class ScaledQuail extends BirdCard {
   readonly powerType = PowerType.BROWN;
   readonly powerText = 'Lay 1 egg on this bird.';
 
-  onActivate(player: Player, _game: Game): void {
+  onActivate(player: Player, game: Game): void {
     const self = player.board.getAllBirds().find(b => b.name === this.name);
-    if (self && self.eggs < this.eggCapacity) {
-      self.eggs++;
-    }
+    if (!self) return;
+    const canConfirm = self.eggs < this.eggCapacity;
+    game.deferredActions.push(new ConfirmSimpleBrownEffect(
+      player,
+      this.powerText,
+      () => {
+        if (self.eggs < this.eggCapacity) {
+          self.eggs++;
+        }
+      },
+      canConfirm,
+      'No space for more eggs on this bird',
+    ));
   }
 }

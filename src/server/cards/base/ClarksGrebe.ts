@@ -6,7 +6,7 @@ import { HabitatType } from '../../../common/game/HabitatType';
 import { PowerType } from '../../../common/game/PowerType';
 import type { Player } from '../../Player';
 import type { Game } from '../../Game';
-import { DrawCards } from '../../deferredActions/DrawCards';
+import { DrawThenDiscardOne } from '../../deferredActions/DrawThenDiscardOne';
 
 export class ClarksGrebe extends BirdCard {
   readonly name = BirdCardName.CLARKS_GREBE;
@@ -22,8 +22,6 @@ export class ClarksGrebe extends BirdCard {
   readonly powerText = 'Draw 1 card. If you do, discard 1 card from your hand at the end of your turn.';
 
   onActivate(player: Player, game: Game): void {
-    const card = game.drawFromDeck();
-    if (card) player.addCardToHand(card);
-    // Discard at end of turn is simplified to immediate draw only
+    game.deferredActions.push(new DrawThenDiscardOne(player, 1, this.powerText));
   }
 }

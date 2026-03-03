@@ -13,6 +13,11 @@
     </div>
     <div class="input-actions">
       <button
+        v-if="canSkip"
+        class="btn-secondary"
+        @click="$emit('submit', { type: 'SELECT_HABITAT_SLOT', skip: true })"
+      >Skip</button>
+      <button
         class="btn-primary"
         :disabled="!selected"
         @click="$emit('submit', { type: 'SELECT_HABITAT_SLOT', selectedHabitat: selected })"
@@ -29,6 +34,7 @@ export default defineComponent({
   name: 'SelectHabitatSlot',
   props: {
     availableHabitats: { type: Array as PropType<HabitatType[]>, required: true },
+    canSkip: { type: Boolean, default: false },
   },
   emits: ['submit'],
   data() {

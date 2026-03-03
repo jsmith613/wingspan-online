@@ -6,6 +6,7 @@ import { HabitatType } from '../../../common/game/HabitatType';
 import { PowerType } from '../../../common/game/PowerType';
 import type { Player } from '../../Player';
 import type { Game } from '../../Game';
+import { TuckCard } from '../../deferredActions/TuckCard';
 
 export class PurpleMartin extends BirdCard {
   readonly name = BirdCardName.PURPLE_MARTIN;
@@ -21,15 +22,15 @@ export class PurpleMartin extends BirdCard {
   readonly powerText = 'Tuck 1 card from your hand behind this bird. If you do, draw 1 card.';
 
   onActivate(player: Player, game: Game): void {
-    if (player.hand.length === 0) return;
     const self = player.board.getAllBirds().find(b => b.name === this.name);
     if (!self) return;
-    // Auto-tuck the first card and draw
-    const card = player.hand.shift();
-    if (card) {
-      self.tuckedCards++;
-      const drawn = game.drawFromDeck();
-      if (drawn) player.addCardToHand(drawn);
-    }
+    game.deferredActions.push(new TuckCard(player, {
+      targetBird: self,
+      message: 'Optional: tuck 1 card from your hand behind this bird, or skip.',
+      onTucked: () => {
+        const drawn = game.drawFromDeck();
+        if (drawn) player.addCardToHand(drawn);
+      },
+    }));
   }
 }

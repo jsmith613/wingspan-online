@@ -23,6 +23,11 @@ export interface BirdCardProperties {
   readonly powerText: string;
 }
 
+export interface BrownPowerContext {
+  readonly habitat?: HabitatType;
+  readonly slotIndex?: number;
+}
+
 /**
  * Base class for all bird cards.
  * Provides property caching, default no-op power methods, and serialization.
@@ -78,7 +83,7 @@ export abstract class BirdCard implements BirdCardProperties {
    * Brown power: activated when the habitat action passes through this bird.
    * Override in brown-power bird cards.
    */
-  onActivate(_player: Player, _game: Game): void {
+  onActivate(_player: Player, _game: Game, _context?: BrownPowerContext): void {
     // no-op
   }
 

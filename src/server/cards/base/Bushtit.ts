@@ -6,6 +6,7 @@ import { HabitatType } from '../../../common/game/HabitatType';
 import { PowerType } from '../../../common/game/PowerType';
 import type { Player } from '../../Player';
 import type { Game } from '../../Game';
+import { TuckCard } from '../../deferredActions/TuckCard';
 
 export class Bushtit extends BirdCard {
   readonly name = BirdCardName.BUSHTIT;
@@ -21,15 +22,16 @@ export class Bushtit extends BirdCard {
   readonly powerText = 'Tuck 1 card from your hand behind this bird. If you do, you may also lay 1 egg on this bird.';
 
   onActivate(player: Player, game: Game): void {
-    if (player.hand.length === 0) return;
     const self = player.board.getAllBirds().find(b => b.name === this.name);
     if (!self) return;
-    const card = player.hand.shift();
-    if (card) {
-      self.tuckedCards++;
+    game.deferredActions.push(new TuckCard(player, {
+      targetBird: self,
+      message: 'Optional: tuck 1 card from your hand behind this bird, or skip.',
+      onTucked: () => {
       if (self.eggs < this.eggCapacity) {
         self.eggs++;
       }
-    }
+      },
+    }));
   }
 }

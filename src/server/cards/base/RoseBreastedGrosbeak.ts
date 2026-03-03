@@ -4,6 +4,9 @@ import { FoodType } from '../../../common/game/FoodType';
 import { NestType } from '../../../common/game/NestType';
 import { HabitatType } from '../../../common/game/HabitatType';
 import { PowerType } from '../../../common/game/PowerType';
+import type { Player } from '../../Player';
+import type { Game } from '../../Game';
+import { GainFromBirdfeederChoices } from '../../deferredActions/GainFromBirdfeederChoices';
 
 export class RoseBreastedGrosbeak extends BirdCard {
   readonly name = BirdCardName.ROSE_BREASTED_GROSBEAK;
@@ -18,4 +21,11 @@ export class RoseBreastedGrosbeak extends BirdCard {
   readonly powerType = PowerType.BROWN;
   readonly powerText = 'Gain 1 seed or fruit from the birdfeeder, if available.';
 
+  onActivate(player: Player, game: Game): void {
+    game.deferredActions.push(new GainFromBirdfeederChoices(
+      player,
+      [FoodType.SEED, FoodType.FRUIT],
+      `${this.commonName}: ${this.powerText}`,
+    ));
+  }
 }

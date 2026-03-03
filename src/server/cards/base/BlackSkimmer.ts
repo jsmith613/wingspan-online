@@ -6,6 +6,7 @@ import { HabitatType } from '../../../common/game/HabitatType';
 import { PowerType } from '../../../common/game/PowerType';
 import type { Player } from '../../Player';
 import type { Game } from '../../Game';
+import { RollOutsideBirdfeederForCache } from '../../deferredActions/RollOutsideBirdfeederForCache';
 
 export class BlackSkimmer extends BirdCard {
   readonly name = BirdCardName.BLACK_SKIMMER;
@@ -21,10 +22,13 @@ export class BlackSkimmer extends BirdCard {
   readonly powerText = 'Roll all dice not in birdfeeder. If any are fish, cache 1 fish from the supply on this bird.';
 
   onActivate(player: Player, game: Game): void {
-    const result = game.birdfeeder.rollOutsideDice();
-    if (result.includes(FoodType.FISH)) {
-      const self = player.board.getAllBirds().find(b => b.name === this.name);
-      if (self) self.cachedFood++;
-    }
+    const self = player.board.getAllBirds().find(b => b.name === this.name);
+    if (!self) return;
+    game.deferredActions.push(new RollOutsideBirdfeederForCache(
+      player,
+      self,
+      FoodType.FISH,
+      this.commonName,
+    ));
   }
 }

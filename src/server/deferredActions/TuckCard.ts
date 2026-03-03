@@ -6,39 +6,60 @@ import { InputType } from '../../common/input/InputType';
 import { BirdCardName } from '../../common/cards/BirdCardName';
 import { PlacedBird } from '../habitats/PlayerBoard';
 
+interface TuckCardOptions {
+  readonly targetBird: PlacedBird;
+  readonly count?: number;
+  readonly min?: number;
+  readonly message?: string;
+  readonly onTucked?: (count: number, game: Game) => void;
+}
+
 /**
  * Tuck a card from hand behind a bird on the board.
  */
 export class TuckCard extends DeferredAction {
-  private readonly targetBird: PlacedBird | null;
+  private readonly targetBird: PlacedBird;
   private readonly count: number;
+  private readonly min: number;
+  private readonly message?: string;
+  private readonly onTucked?: (count: number, game: Game) => void;
 
-  constructor(player: Player, count: number = 1, targetBird: PlacedBird | null = null) {
+  constructor(player: Player, options: TuckCardOptions) {
     super(player, ActionPriority.DEFAULT);
-    this.count = count;
-    this.targetBird = targetBird;
+    this.targetBird = options.targetBird;
+    this.count = options.count ?? 1;
+    this.min = options.min ?? 0;
+    this.message = options.message;
+    this.onTucked = options.onTucked;
   }
 
   execute(_game: Game): PlayerInputModel | undefined {
     if (this.player.hand.length === 0) {
       return undefined;
     }
-    if (this.targetBird) {
-      // Tuck from hand to specific bird
-      return this.askForCardToTuck();
-    }
     return this.askForCardToTuck();
   }
 
-  handleInput(_game: Game, response: unknown): PlayerInputModel | undefined {
-    const cardName = response as BirdCardName;
-    const idx = this.player.hand.indexOf(cardName);
-    if (idx !== -1) {
-      this.player.hand.splice(idx, 1);
-      if (this.targetBird) {
+  handleInput(game: Game, response: unknown): PlayerInputModel | undefined {
+    const input = response as any;
+    const selected = Array.isArray(input?.selectedCards)
+      ? (input.selectedCards as BirdCardName[])
+      : (typeof response === 'string' ? [response as BirdCardName] : []);
+
+    let tucked = 0;
+    for (const cardName of selected.slice(0, this.count)) {
+      const idx = this.player.hand.indexOf(cardName);
+      if (idx !== -1) {
+        this.player.hand.splice(idx, 1);
         this.targetBird.tuckedCards++;
+        tucked++;
       }
     }
+
+    if (tucked > 0) {
+      this.onTucked?.(tucked, game);
+    }
+
     return undefined;
   }
 
@@ -49,7 +70,8 @@ export class TuckCard extends DeferredAction {
     return {
       type: InputType.SELECT_CARDS,
       availableCards: [...this.player.hand],
-      min: 0,
+      message: this.message,
+      min: this.min,
       max: this.count,
     };
   }

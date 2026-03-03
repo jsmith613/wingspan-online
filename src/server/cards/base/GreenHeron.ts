@@ -6,6 +6,7 @@ import { HabitatType } from '../../../common/game/HabitatType';
 import { PowerType } from '../../../common/game/PowerType';
 import type { Player } from '../../Player';
 import type { Game } from '../../Game';
+import { TradeOneFoodForAnyFood } from '../../deferredActions/TradeOneFoodForAnyFood';
 
 export class GreenHeron extends BirdCard {
   readonly name = BirdCardName.GREEN_HERON;
@@ -20,8 +21,7 @@ export class GreenHeron extends BirdCard {
   readonly powerType = PowerType.BROWN;
   readonly powerText = 'Trade 1 wild for any other type from the supply.';
 
-  // TODO: Complex power - requires additional UI interaction
-  onActivate(_player: Player, _game: Game): void {
-    // Trade 1 [wild] for any other type from the supply.
+  onActivate(player: Player, game: Game): void {
+    game.deferredActions.push(new TradeOneFoodForAnyFood(player, this.powerText));
   }
 }

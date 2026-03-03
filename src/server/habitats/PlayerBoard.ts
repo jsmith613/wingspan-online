@@ -70,6 +70,33 @@ export class PlayerBoard {
     return this.habitats.get(habitat)![column];
   }
 
+  /** Get the rightmost occupied slot index for a habitat, or -1 if empty. */
+  getRightmostOccupiedSlot(habitat: HabitatType): number {
+    const slots = this.habitats.get(habitat)!;
+    for (let i = slots.length - 1; i >= 0; i--) {
+      if (slots[i] !== null) return i;
+    }
+    return -1;
+  }
+
+  /**
+   * Move a bird from one habitat slot to the next empty slot in another habitat.
+   * Returns true on success.
+   */
+  moveBird(fromHabitat: HabitatType, fromColumn: number, toHabitat: HabitatType): boolean {
+    const fromSlots = this.habitats.get(fromHabitat)!;
+    const bird = fromSlots[fromColumn];
+    if (!bird) return false;
+
+    const toSlot = this.getNextEmptySlot(toHabitat);
+    if (toSlot === -1) return false;
+
+    const toSlots = this.habitats.get(toHabitat)!;
+    toSlots[toSlot] = bird;
+    fromSlots[fromColumn] = null;
+    return true;
+  }
+
   /** Get all placed birds across all habitats. */
   getAllBirds(): PlacedBird[] {
     const birds: PlacedBird[] = [];

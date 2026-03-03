@@ -4,6 +4,9 @@ import { FoodType } from '../../../common/game/FoodType';
 import { NestType } from '../../../common/game/NestType';
 import { HabitatType } from '../../../common/game/HabitatType';
 import { PowerType } from '../../../common/game/PowerType';
+import type { Player } from '../../Player';
+import type { Game } from '../../Game';
+import { DiscardEggForWildFood } from '../../deferredActions/DiscardEggForWildFood';
 
 export class CommonRaven extends BirdCard {
   readonly name = BirdCardName.COMMON_RAVEN;
@@ -18,4 +21,7 @@ export class CommonRaven extends BirdCard {
   readonly powerType = PowerType.BROWN;
   readonly powerText = 'Discard 1 egg from any of your other birds to gain 2 wild from the supply.';
 
+  onActivate(player: Player, game: Game): void {
+    game.deferredActions.push(new DiscardEggForWildFood(player, 2, this.powerText));
+  }
 }

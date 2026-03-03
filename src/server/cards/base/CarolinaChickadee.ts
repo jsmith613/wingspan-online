@@ -6,6 +6,7 @@ import { HabitatType } from '../../../common/game/HabitatType';
 import { PowerType } from '../../../common/game/PowerType';
 import type { Player } from '../../Player';
 import type { Game } from '../../Game';
+import { ConfirmSimpleBrownEffect } from '../../deferredActions/ConfirmSimpleBrownEffect';
 
 export class CarolinaChickadee extends BirdCard {
   readonly name = BirdCardName.CAROLINA_CHICKADEE;
@@ -20,8 +21,15 @@ export class CarolinaChickadee extends BirdCard {
   readonly powerType = PowerType.BROWN;
   readonly powerText = 'Cache 1 seed from the supply on this bird.';
 
-  onActivate(player: Player, _game: Game): void {
+  onActivate(player: Player, game: Game): void {
     const self = player.board.getAllBirds().find(b => b.name === this.name);
-    if (self) self.cachedFood++;
+    if (!self) return;
+    game.deferredActions.push(new ConfirmSimpleBrownEffect(
+      player,
+      this.powerText,
+      () => {
+        self.cachedFood++;
+      },
+    ));
   }
 }

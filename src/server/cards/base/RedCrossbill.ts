@@ -6,6 +6,7 @@ import { HabitatType } from '../../../common/game/HabitatType';
 import { PowerType } from '../../../common/game/PowerType';
 import type { Player } from '../../Player';
 import type { Game } from '../../Game';
+import { AllPlayersGainFoodFromSupply } from '../../deferredActions/AllPlayersGainFoodFromSupply';
 
 export class RedCrossbill extends BirdCard {
   readonly name = BirdCardName.RED_CROSSBILL;
@@ -20,9 +21,7 @@ export class RedCrossbill extends BirdCard {
   readonly powerType = PowerType.BROWN;
   readonly powerText = 'All players gain 1 seed from the supply.';
 
-  onActivate(_player: Player, game: Game): void {
-    for (const p of game.getPlayers()) {
-      p.addFood(FoodType.SEED);
-    }
+  onActivate(player: Player, game: Game): void {
+    game.deferredActions.push(new AllPlayersGainFoodFromSupply(player, FoodType.SEED, this.powerText));
   }
 }

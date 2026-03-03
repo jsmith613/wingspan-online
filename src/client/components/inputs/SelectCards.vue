@@ -1,7 +1,7 @@
 <template>
   <div class="input-panel panel">
     <h3>Select Cards</h3>
-    <p class="input-hint">Choose {{ min }}<span v-if="max !== min"> to {{ max }}</span> card{{ max > 1 ? 's' : '' }}</p>
+    <p class="input-hint">{{ hintText() }}</p>
     <div class="card-options">
       <div
         v-for="name in availableCards"
@@ -14,6 +14,11 @@
       </div>
     </div>
     <div class="input-actions">
+      <button
+        v-if="min === 0"
+        class="btn-secondary"
+        @click="skip"
+      >Skip</button>
       <button
         class="btn-primary"
         :disabled="selected.length < min"
@@ -31,6 +36,7 @@ export default defineComponent({
   name: 'SelectCards',
   props: {
     availableCards: { type: Array as PropType<BirdCardName[]>, required: true },
+    message: { type: String, default: '' },
     min: { type: Number, required: true },
     max: { type: Number, required: true },
   },
@@ -41,6 +47,10 @@ export default defineComponent({
     };
   },
   methods: {
+    hintText(): string {
+      if (this.message) return this.message;
+      return `Choose ${this.min}${this.max !== this.min ? ` to ${this.max}` : ''} card${this.max > 1 ? 's' : ''}`;
+    },
     formatName(name: BirdCardName): string {
       return String(name).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
     },
@@ -59,6 +69,10 @@ export default defineComponent({
     },
     confirm() {
       this.$emit('submit', { type: 'SELECT_CARDS', selectedCards: [...this.selected] });
+    },
+    skip() {
+      this.selected = [];
+      this.confirm();
     },
   },
 });

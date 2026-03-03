@@ -22,7 +22,10 @@ export class BlueJay extends BirdCard {
   readonly powerText = 'Gain 1 seed from the birdfeeder, if available. You may cache it on this bird.';
 
   onActivate(player: Player, game: Game): void {
-    game.deferredActions.push(new GainFood(player, 1));
+    game.deferredActions.push(new GainFood(player, 1, {
+      allowedFoods: [FoodType.SEED],
+      message: `${this.commonName}: Gain 1 seed from the birdfeeder.`,
+    }));
     // Caching is optional - simplified to auto-cache
     // Full implementation would ask player if they want to cache
   }

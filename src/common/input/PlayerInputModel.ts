@@ -39,6 +39,7 @@ export interface SelectFoodInput {
 export interface SelectHabitatSlotInput {
   readonly type: InputType.SELECT_HABITAT_SLOT;
   readonly availableHabitats: ReadonlyArray<HabitatType>;
+  readonly canSkip?: boolean;
   readonly lockBack?: boolean;
 }
 
@@ -51,6 +52,7 @@ export interface SelectEggLocationInput {
 export interface SelectCardsInput {
   readonly type: InputType.SELECT_CARDS;
   readonly availableCards: ReadonlyArray<BirdCardName>;
+  readonly message?: string;
   readonly min: number;
   readonly max: number;
 }
@@ -59,6 +61,7 @@ export interface SelectOptionInput {
   readonly type: InputType.SELECT_OPTION;
   readonly options: ReadonlyArray<string>;
   readonly message: string;
+  readonly disabledOptions?: ReadonlyArray<string>;
   readonly cardDetails?: ReadonlyArray<ClientBirdCard>;
 }
 

@@ -6,6 +6,7 @@ import { HabitatType } from '../../../common/game/HabitatType';
 import { PowerType } from '../../../common/game/PowerType';
 import type { Player } from '../../Player';
 import type { Game } from '../../Game';
+import { DiscardEggForWildFood } from '../../deferredActions/DiscardEggForWildFood';
 
 export class AmericanCrow extends BirdCard {
   readonly name = BirdCardName.AMERICAN_CROW;
@@ -20,12 +21,7 @@ export class AmericanCrow extends BirdCard {
   readonly powerType = PowerType.BROWN;
   readonly powerText = 'Discard 1 egg from any of your other birds to gain 1 wild from the supply.';
 
-  onActivate(player: Player, _game: Game): void {
-    // Find a bird with eggs to discard from
-    const birds = player.board.getAllBirds().filter(b => b.eggs > 0 && b.name !== this.name);
-    if (birds.length === 0) return;
-    birds[0].eggs--;
-    // Gain a wild food (player picks any type) - simplified to invertebrate
-    player.addFood(FoodType.INVERTEBRATE);
+  onActivate(player: Player, game: Game): void {
+    game.deferredActions.push(new DiscardEggForWildFood(player, 1, this.powerText));
   }
 }

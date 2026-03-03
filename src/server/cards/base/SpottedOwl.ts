@@ -6,6 +6,7 @@ import { HabitatType } from '../../../common/game/HabitatType';
 import { PowerType } from '../../../common/game/PowerType';
 import type { Player } from '../../Player';
 import type { Game } from '../../Game';
+import { DrawBonusCardsKeepOne } from '../../deferredActions/DrawBonusCardsKeepOne';
 
 export class SpottedOwl extends BirdCard {
   readonly name = BirdCardName.SPOTTED_OWL;
@@ -20,7 +21,8 @@ export class SpottedOwl extends BirdCard {
   readonly powerType = PowerType.WHITE;
   readonly powerText = 'Draw 2 new bonus cards and keep 1.';
 
-  onPlay(_player: Player, _game: Game): void {
-    // TODO: Draw 2 bonus cards and keep 1 - requires bonus card draw system
+  onPlay(player: Player, game: Game): void {
+    game.deferredActions.push(new DrawBonusCardsKeepOne(player));
   }
 }
+

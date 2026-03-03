@@ -1,27 +1,49 @@
 <template>
   <div class="player-home">
     <!-- Top bar: round info, player info, food supply -->
-    <header class="game-header">
+    <header
+      class="game-header"
+      :class="{ 'other-player-view': isViewingOther }"
+      :style="headerStyle"
+    >
       <div class="header-left">
         <span class="round-badge">Round {{ game.round }}/4</span>
         <span class="phase-badge">{{ game.phase }}</span>
       </div>
       <div class="header-center">
         <h2>{{ currentPlayer.name }}'s Turn</h2>
-        <span class="cubes-info">{{ currentPlayer.actionCubes }} actions left</span>
+        <span class="cubes-info">
+          {{ currentPlayer.actionCubes }} actions left
+          <template v-if="isViewingOther"> | Viewing {{ viewedPlayer.name }}'s Board</template>
+        </span>
       </div>
       <div class="header-right">
         <div class="hand-count">
-          Cards: {{ currentPlayer.hand.length }} | Food: {{ currentPlayer.food.length }}
+          Cards: {{ viewedPlayer.handCount }} | Food: {{ viewedPlayer.food.length }}
         </div>
       </div>
     </header>
+    <div
+      class="player-tabs"
+      :class="{ 'other-player-view': isViewingOther }"
+      :style="tabsStyle"
+    >
+      <button
+        v-for="player in game.players"
+        :key="player.id"
+        class="player-tab"
+        :class="{ active: player.id === viewedPlayer.id, self: player.id === currentPlayer.id }"
+        @click="setViewedPlayer(player.id)"
+      >
+        {{ player.name }}
+      </button>
+    </div>
 
     <!-- Main area: board + bird tray + sidebar -->
     <div class="game-main">
       <div class="main-left">
         <PlayerBoard
-          :board="currentPlayer.board"
+          :board="viewedPlayer.board"
           :selectable-habitats="selectableHabitats"
           @select-slot="onSlotSelected"
         />
@@ -77,15 +99,28 @@
     <div class="personal-stash">
       <div class="stash-hand">
         <HandCards
+          v-if="!isViewingOther"
           :cards="handCards"
           :selectable="false"
         />
+        <div v-else class="opponent-hand">
+          <div v-if="viewedPlayer.handCount === 0" class="no-items">No cards in hand</div>
+          <div v-else class="opponent-hand-stack">
+            <div
+              v-for="i in viewedPlayer.handCount"
+              :key="`opponent-hand-${i}`"
+              class="card-back bird"
+            >
+              <img :src="cardBackSrc" alt="Card back" class="card-back-img" />
+            </div>
+          </div>
+        </div>
       </div>
       <div v-if="game.options?.showVpTotals" class="stash-score">
         <h4 class="stash-label">Victory Points</h4>
-        <span class="vp-total">{{ currentPlayer.score }}</span>
+        <span class="vp-total">{{ isViewingOther ? '?' : currentPlayer.score }}</span>
       </div>
-      <div v-if="bonusCards.length > 0" class="stash-bonus">
+      <div v-if="bonusCards.length > 0 && !isViewingOther" class="stash-bonus">
         <h4 class="stash-label">Bonus Cards</h4>
         <div class="bonus-cards-row">
           <div
@@ -100,6 +135,19 @@
           </div>
         </div>
       </div>
+      <div v-if="isViewingOther" class="stash-bonus">
+        <h4 class="stash-label">Bonus Cards</h4>
+        <div v-if="viewedPlayer.bonusCardCount === 0" class="no-items">None</div>
+        <div v-else class="opponent-bonus-stack">
+          <div
+            v-for="i in viewedPlayer.bonusCardCount"
+            :key="`opponent-bonus-${i}`"
+            class="card-back bonus"
+          >
+            <img :src="bonusBackSrc" alt="Bonus card back" class="card-back-img" />
+          </div>
+        </div>
+      </div>
       <Teleport to="body">
         <div
           v-if="hoveredBonusCard"
@@ -110,12 +158,12 @@
         </div>
       </Teleport>
       <div class="stash-food">
-        <h4 class="stash-label">Food Supply</h4>
+        <h4 class="stash-label">Food in hand</h4>
         <div class="food-supply">
-          <div v-for="(f, i) in currentPlayer.food" :key="i" class="food-token">
+          <div v-for="(f, i) in viewedPlayer.food" :key="i" class="food-token">
             <img :src="foodIcon(f)" :alt="f" :title="f" class="food-img" />
           </div>
-          <span v-if="currentPlayer.food.length === 0" class="no-items">None</span>
+          <span v-if="viewedPlayer.food.length === 0" class="no-items">None</span>
         </div>
       </div>
     </div>
@@ -133,6 +181,9 @@ import { HabitatType } from '@common/game/HabitatType';
 import { FoodType } from '@common/game/FoodType';
 import { PlayerId } from '@common/Types';
 import { FOOD_ICONS } from '../utils/cardAssets';
+import { colorForPlayer } from '../utils/playerColors';
+import birdBack from '../assets/backgrounds/bird-back.jpg';
+import bonusBack from '../assets/backgrounds/bonus-back.jpg';
 import PlayerBoard from './board/PlayerBoard.vue';
 import Birdfeeder from './birdfeeder/Birdfeeder.vue';
 import RoundGoalTracker from './scoring/RoundGoalTracker.vue';
@@ -153,11 +204,38 @@ export default defineComponent({
     return {
       hoveredTrayCard: null as ClientBirdCard | null,
       hoveredBonusCard: null as ClientBonusCard | null,
+      viewedPlayerId: null as PlayerId | null,
+      cardBackSrc: birdBack as string,
+      bonusBackSrc: bonusBack as string,
     };
   },
   computed: {
     currentPlayer(): PlayerViewModel {
       return this.game.players.find((p) => p.id === this.playerId) || this.game.players[0];
+    },
+    viewedPlayer(): PlayerViewModel {
+      const selected = this.viewedPlayerId
+        ? this.game.players.find((p) => p.id === this.viewedPlayerId)
+        : null;
+      return selected || this.currentPlayer;
+    },
+    isViewingOther(): boolean {
+      return this.viewedPlayer.id !== this.currentPlayer.id;
+    },
+    viewedPlayerColor(): string {
+      return colorForPlayer(this.game.players, this.viewedPlayer.id);
+    },
+    headerStyle(): Record<string, string> {
+      return {
+        background: this.viewedPlayerColor,
+        borderBottomColor: this.viewedPlayerColor,
+      };
+    },
+    tabsStyle(): Record<string, string> {
+      return {
+        background: this.viewedPlayerColor,
+        borderBottomColor: this.viewedPlayerColor,
+      };
     },
     handCards(): ClientBirdCard[] {
       return [...(this.currentPlayer.handDetails || [])];
@@ -218,6 +296,9 @@ export default defineComponent({
     },
   },
   methods: {
+    setViewedPlayer(playerId: PlayerId) {
+      this.viewedPlayerId = playerId;
+    },
     foodIcon(food: FoodType): string {
       return FOOD_ICONS[food] || '';
     },
@@ -229,6 +310,23 @@ export default defineComponent({
     },
     onSlotSelected(habitat: HabitatType, index: number) {
       // Will be used when SELECT_HABITAT_SLOT input is active
+    },
+  },
+  watch: {
+    playerId: {
+      immediate: true,
+      handler(next: PlayerId) {
+        this.viewedPlayerId = next;
+      },
+    },
+    game: {
+      deep: true,
+      handler() {
+        const exists = this.game.players.some((p) => p.id === this.viewedPlayerId);
+        if (!exists) {
+          this.viewedPlayerId = this.playerId;
+        }
+      },
     },
   },
 });
@@ -251,6 +349,7 @@ export default defineComponent({
   background: $color-white;
   border-bottom: 2px solid $color-border;
   flex-shrink: 0;
+  color: $color-forest;
 
   .header-center {
     text-align: center;
@@ -258,7 +357,7 @@ export default defineComponent({
     h2 { margin: 0; font-size: $font-size-lg; }
     .cubes-info {
       font-size: $font-size-sm;
-      color: $color-text-light;
+      color: rgba(38, 55, 28, 0.88);
     }
   }
 
@@ -266,8 +365,46 @@ export default defineComponent({
     text-align: right;
     font-size: $font-size-sm;
 
-    .hand-count { color: $color-text-light; }
+    .hand-count { color: rgba(38, 55, 28, 0.9); }
   }
+}
+
+.game-header.other-player-view {
+  background: lighten($color-wetland-bg, 4%);
+  border-bottom-color: $color-wetland;
+}
+
+.player-tabs {
+  display: flex;
+  gap: $space-sm;
+  padding: $space-sm $space-md;
+  background: $color-white;
+  border-bottom: 1px solid $color-border-light;
+}
+
+.player-tabs.other-player-view {
+  background: lighten($color-wetland-bg, 5%);
+}
+
+.player-tab {
+  padding: $space-xs $space-sm;
+  border: 1px solid $color-border;
+  border-radius: $radius-sm;
+  background: $color-cream;
+  color: $color-text;
+  cursor: pointer;
+  font-size: $font-size-sm;
+  font-weight: 600;
+}
+
+.player-tab.self {
+  border-color: $color-forest-light;
+}
+
+.player-tab.active {
+  background: $color-forest;
+  color: $color-white;
+  border-color: $color-forest;
 }
 
 .round-badge, .phase-badge {
@@ -280,27 +417,27 @@ export default defineComponent({
 }
 
 .round-badge {
-  background: $color-forest;
-  color: $color-white;
+  background: rgba(38, 55, 28, 0.12);
+  color: $color-forest;
 }
 
 .phase-badge {
-  background: $color-earth-bg;
-  color: $color-earth;
+  background: rgba(38, 55, 28, 0.12);
+  color: $color-forest;
 }
 
 .game-main {
   display: flex;
-  flex: 1;
   gap: $space-md;
   padding: $space-md;
-  overflow: auto;
+  overflow: visible;
 
   .main-left {
     flex: 1;
     min-width: 0;
     display: flex;
     gap: $space-md;
+    align-items: flex-start;
   }
 
   .main-right {
@@ -433,6 +570,53 @@ $tray-scaled-h: 360px * $tray-card-scale;
     font-style: italic;
     font-size: $font-size-sm;
   }
+}
+
+.opponent-hand {
+  display: block;
+}
+
+.opponent-hand-stack {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: $space-sm;
+  overflow-x: auto;
+  padding: $space-md;
+  background: rgba($color-bark, 0.05);
+  border-top: 2px solid $color-border;
+}
+
+.opponent-bonus-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-sm;
+}
+
+.card-back {
+  width: 84px;
+  height: 124px;
+  border-radius: $radius-md;
+  border: 2px solid $color-bark;
+  background: $color-cream;
+  overflow: hidden;
+  box-shadow: $shadow-sm;
+}
+
+.card-back.bird {
+  width: 240px;
+  height: 360px;
+}
+
+.card-back.bonus {
+  width: 108px;
+  height: 162px;
+}
+
+.card-back-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 $bonus-card-scale: 0.45;

@@ -6,6 +6,7 @@ import { HabitatType } from '../../../common/game/HabitatType';
 import { PowerType } from '../../../common/game/PowerType';
 import type { Player } from '../../Player';
 import type { Game } from '../../Game';
+import { ConfirmSimpleBrownEffect } from '../../deferredActions/ConfirmSimpleBrownEffect';
 
 export class BlueGrayGnatcatcher extends BirdCard {
   readonly name = BirdCardName.BLUE_GRAY_GNATCATCHER;
@@ -20,7 +21,9 @@ export class BlueGrayGnatcatcher extends BirdCard {
   readonly powerType = PowerType.BROWN;
   readonly powerText = 'Gain 1 invertebrate from the supply.';
 
-  onActivate(player: Player, _game: Game): void {
-    player.addFood(FoodType.INVERTEBRATE);
+  onActivate(player: Player, game: Game): void {
+    game.deferredActions.push(new ConfirmSimpleBrownEffect(player, this.powerText, () => {
+      player.addFood(FoodType.INVERTEBRATE);
+    }));
   }
 }

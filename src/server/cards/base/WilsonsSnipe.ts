@@ -6,7 +6,7 @@ import { HabitatType } from '../../../common/game/HabitatType';
 import { PowerType } from '../../../common/game/PowerType';
 import type { Player } from '../../Player';
 import type { Game } from '../../Game';
-import { DrawCards } from '../../deferredActions/DrawCards';
+import { AllPlayersDrawFromDeck } from '../../deferredActions/AllPlayersDrawFromDeck';
 
 export class WilsonsSnipe extends BirdCard {
   readonly name = BirdCardName.WILSONS_SNIPE;
@@ -21,10 +21,7 @@ export class WilsonsSnipe extends BirdCard {
   readonly powerType = PowerType.BROWN;
   readonly powerText = 'All players draw 1 card from the deck.';
 
-  onActivate(_player: Player, game: Game): void {
-    for (const p of game.getPlayers()) {
-      const card = game.drawFromDeck();
-      if (card) p.addCardToHand(card);
-    }
+  onActivate(player: Player, game: Game): void {
+    game.deferredActions.push(new AllPlayersDrawFromDeck(player, 1, this.powerText));
   }
 }

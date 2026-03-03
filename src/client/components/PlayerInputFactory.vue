@@ -37,6 +37,7 @@
     <SelectHabitatSlot
       v-else-if="input.type === 'SELECT_HABITAT_SLOT'"
       :available-habitats="input.availableHabitats"
+      :can-skip="input.canSkip || false"
       @submit="(v) => $emit('submit', v)"
     />
 
@@ -50,6 +51,7 @@
     <SelectCards
       v-else-if="input.type === 'SELECT_CARDS'"
       :available-cards="input.availableCards"
+      :message="input.message || ''"
       :min="input.min"
       :max="input.max"
       @submit="(v) => $emit('submit', v)"
@@ -59,6 +61,7 @@
       v-else-if="input.type === 'SELECT_OPTION'"
       :options="input.options"
       :message="input.message"
+      :disabled-options="input.disabledOptions || []"
       :card-details="input.cardDetails || []"
       @submit="(v) => $emit('submit', v)"
     />
